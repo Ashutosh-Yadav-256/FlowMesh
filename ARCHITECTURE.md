@@ -32,10 +32,19 @@
   - [5.1 DAG Formulation & Step Resolution](#51-dag-formulation--step-resolution)
   - [5.2 State Machine Lifecycle](#52-state-machine-lifecycle)
   - [5.3 Retries, Exponential Backoff & Dead Letter Queues (DLQ)](#53-retries-exponential-backoff--dead-letter-queues-dlq)
-- [6. Edge Execution Plane (Go Static Daemon)](#6-edge-execution-plane-go-static-daemon)
+  - [5.4 Distributed Scheduled Jobs & Cron Evaluation](#54-distributed-scheduled-jobs--cron-evaluation)
+- [6. Edge Execution Plane & Systems Administration Fleet](#6-edge-execution-plane-go-static-daemon)
   - [6.1 Outbound-Only mTLS Polling Protocol (ADR-0001)](#61-outbound-only-mtls-polling-protocol-adr-0001)
   - [6.2 Cryptographic Command Signing & Anti-RCE (ADR-0002)](#62-cryptographic-command-signing--anti-rce-adr-0002)
   - [6.3 Embedded SQLite Disconnected Spool Queue](#63-embedded-sqlite-disconnected-spool-queue)
+  - [6.4 Enterprise Systems Administration & Remote Fleet Architecture](#64-enterprise-systems-administration--remote-fleet-architecture)
+    - [6.4.1 ServiceNow Table API & CMDB Integration](#641-servicenow-table-api--cmdb-integration)
+    - [6.4.2 Active Directory (AD DS) & LDAP Identity Governance](#642-active-directory-ad-ds--ldap-identity-governance)
+    - [6.4.3 Windows Server Administration & Native PowerShell Execution Engine](#643-windows-server-administration--native-powershell-execution-engine)
+    - [6.4.4 Paramiko SSH & SFTP Remote Fleet Engine](#644-paramiko-ssh--sftp-remote-fleet-engine)
+    - [6.4.5 PyYAML Declarative DAG Serialization](#645-pyyaml-declarative-dag-serialization)
+    - [6.4.6 FlowMesh Resilient HTTP Client](#646-flowmesh-resilient-http-client)
+    - [6.4.7 High-Performance Pandas Vectorized DataFrame Engine](#647-high-performance-pandas-vectorized-dataframe-engine)
 - [7. Messaging & Event Backbone (NATS JetStream)](#7-messaging--event-backbone-nats-jetstream)
   - [7.1 Stream Topologies & Consumer Groups](#71-stream-topologies--consumer-groups)
   - [7.2 CloudEvents 1.0 Serialization & Idempotent Deduplication](#72-cloudevents-10-serialization--idempotent-deduplication)
@@ -100,7 +109,11 @@ C4Context
         System(agent, "FlowMesh Edge Agent", "Go Daemon: Local Policy Engine, SQLite Spool, mTLS")
         SystemDb(customer_db, "Internal Database", "PostgreSQL, MySQL, Oracle, SAP HANA")
         System(internal_api, "Internal Services", "REST APIs, SFTP, Private Microservices")
+        System(ad_srv, "Active Directory (AD DS)", "LDAP/LDAPS: User Lifecycle, Groups, Audit")
+        System(win_srv, "Windows Server Fleet", "PowerShell, WinRM, Services, Event Logs")
+        System(ssh_srv, "SSH / SFTP Fleet", "Paramiko SSHv2, SFTP Settlement Transfers")
     }
+    System(snow_srv, "ServiceNow Cloud", "Table API: Incidents, Change Requests, CMDB CI")
 
     Rel(dev, web, "Authors & Manages", "HTTPS / OAuth2")
     Rel(operator, web, "Operates & Diagnoses", "HTTPS / OAuth2")
@@ -111,6 +124,10 @@ C4Context
     Rel(agent, api, "Polls Tasks (Outbound Only)", "mTLS / HTTPS")
     Rel(agent, customer_db, "Introspects & Queries", "TCP / TLS")
     Rel(agent, internal_api, "Executes Connectors", "HTTPS / SFTP")
+    Rel(agent, ad_srv, "Directory Operations", "LDAPS / 636")
+    Rel(agent, win_srv, "PowerShell & Services", "WinRM / WMI")
+    Rel(agent, ssh_srv, "SSH & SFTP Commands", "SSHv2 / Port 22")
+    Rel(api, snow_srv, "ITSM Table API", "HTTPS / TLS")
 ```
 
 ---
@@ -218,7 +235,28 @@ When a step execution encounters a transient fault (e.g., downstream socket time
    $$\text{Delay} = \min(\text{MaxDelay}, \text{BaseDelay} \times \text{Factor}^{\text{attempt}}) \times \text{Uniform}(0.5, 1.5)$$
 3. If max attempts are exhausted, the step transitions to `FAILED`. If configured, an event is emitted to the tenant's dedicated Dead Letter Queue (`flowmesh.dlq.{tenant_id}`) for operator triage.
 
+### 5.4 Distributed Scheduled Jobs & Cron Evaluation
+
+FlowMesh embeds an enterprise scheduling subsystem (`services/workflow-engine/flowmesh_engine/scheduler.py`) to orchestrate temporal workflow triggers without relying on external crontab daemons:
+
+```mermaid
+graph LR
+    CronDef[Workflow Schedule Spec] --> Parser[CronScheduleParser]
+    Parser --> Matcher{Time Window Evaluator}
+    Matcher -->|Trigger Due| LockReq[StateStore Distributed Lock Lease]
+    LockReq -->|Lock Granted| Dispatch[Publish Trigger Event to NATS]
+    LockReq -->|Lock Active elsewhere| Skip[Skip Duplicate Execution]
+    Dispatch --> Engine[Topological DAG Dispatcher]
+```
+
+- **CronScheduleParser**: Full compliance with standard 5-part POSIX cron syntax:
+  $$\text{Expression} = \langle\text{minute}\rangle \;\langle\text{hour}\rangle \;\langle\text{day-of-month}\rangle \;\langle\text{month}\rangle \;\langle\text{day-of-week}\rangle$$
+  Supports standard range intervals (`*/15`, `1-5`), comma lists (`1,15,30`), and standard macro aliases (`@hourly`, `@daily`, `@weekly`, `@monthly`).
+- **Interval Scheduler**: Evaluates continuous recurring durations (e.g. `every 30 seconds`, `every 5 minutes`).
+- **Cluster De-Duplication**: Prevents split-brain concurrent triggers across horizontally scaled control plane instances by leveraging `StateStore.acquire_lock(f"cron:{workflow_id}:{scheduled_slot}", lease_ms=60000)` before publishing the execution event to NATS.
+
 ---
+
 
 ## 6. Edge Execution Plane (Go Static Daemon)
 
@@ -259,7 +297,59 @@ If an edge location experiences WAN degradation:
 - Execution outcomes, heartbeats, and audit logs are spooled into a local transactional SQLite database (`agent_spool.db`).
 - Upon WAN restoration, a persistent worker drains the spool sequentially using monotonic transaction order.
 
+### 6.4 Enterprise Systems Administration & Remote Fleet Architecture
+
+FlowMesh provides native, first-party enterprise connectors for IT service management, directory services, Windows Server administration, and secure remote shell operations:
+
+#### 6.4.1 ServiceNow Table API & CMDB Integration
+The `ServiceNowConnector` (`connectors/servicenow/connector.py`) integrates with ServiceNow instances via the REST Table API v2:
+- **Authentication**: Supports Basic HTTP Auth and OAuth 2.0 Client Credentials with automatic token renewal.
+- **Incident Lifecycle**: Declarative operations `create_incident` and `get_incident` with automatic schema mapping between FlowMesh workflow payloads and ServiceNow sys_id / number identifiers.
+- **Change Management**: Enforces ITIL compliance via `create_change_request` with risk classification, scheduled start/end windows, and assignment groups.
+- **CMDB Introspection**: `query_cmdb_ci` executes indexed queries against Configuration Items (`cmdb_ci`, `cmdb_ci_server`, `cmdb_ci_database`) for automated infrastructure topology discovery.
+
+#### 6.4.2 Active Directory (AD DS) & LDAP Identity Governance
+The `ActiveDirectoryConnector` (`connectors/active_directory/connector.py`) automates enterprise identity lifecycle management over secured LDAPS (Port 636):
+- **User Lifecycle Operations**: `get_user`, `create_user`, `disable_user`, and `unlock_user` manage `userAccountControl` flags deterministically.
+- **Role-Based Group Reconciliation**: `add_user_to_group` modifies the member attribute of security and distribution groups.
+- **Compliance Auditing**: `audit_stale_accounts` inspects the `lastLogonTimestamp` across domain organizational units (OUs), identifying inactive accounts exceeding retention policies (e.g., 90 days) to enforce SOC 2 and ISO 27001 access control requirements.
+
+#### 6.4.3 Windows Server Administration & Native PowerShell Execution Engine
+The `WindowsAdminConnector` (`connectors/windows_admin/connector.py`) and `PowerShellRunner` (`packages/connector-sdk/flowmesh_connector/powershell_runner.py`) provide secure, auditable administration of Windows Server fleets:
+- **Process Isolation Model**: Cmdlets and scripts execute via `powershell.exe` with mandatory enterprise flags:
+  `-NoProfile -NonInteractive -ExecutionPolicy Bypass`
+- **Structured JSON Marshaling**: Command outputs are piped through `ConvertTo-Json -Compress -Depth 5`, returning typed dictionary and array structures rather than raw text streams.
+- **Windows Service Orchestration**: Operations `get_service` and `restart_service` query `Get-Service` and invoke `Restart-Service` with status verification.
+- **Event Log Auditing**: `get_event_logs` inspects `Get-WinEvent -LogName System / Application` with configurable log levels, event IDs, and time filters.
+- **WMI/CIM Health Introspection**: Gathers CPU load, available physical memory, and disk space across volumes via `Get-CimInstance Win32_OperatingSystem / Win32_LogicalDisk`.
+
+#### 6.4.4 Paramiko SSH & SFTP Remote Fleet Engine
+The `SshParamikoConnector` (`connectors/ssh/connector.py`) provides high-performance SSHv2 client capabilities:
+- **Transport Security**: Configurable `AutoAddPolicy` or strict `RejectPolicy` host key verification with RSA, ECDSA, and Ed25519 host keys.
+- **Remote Command Execution**: `exec_command` dispatches remote operations, returning structured output, stderr diagnostics, and exit codes.
+- **SFTP Settlement Pipeline**: `sftp_upload`, `sftp_download`, and `sftp_list` stream files with buffered chunking for financial settlements, batch logs, and secure backups.
+
+#### 6.4.5 PyYAML Declarative DAG Serialization
+The `YamlWorkflowParser` (`packages/workflow-schema/flowmesh_workflow/yaml_parser.py`) delivers bidirectional translation between human-readable YAML specifications and FlowMesh Pydantic DAG definitions:
+- **Safe Parsing**: Uses `yaml.safe_load` to mitigate arbitrary object deserialization attacks.
+- **Schema Validation**: Evaluates step identifiers, triggers, dependency integrity, and parameters against `WorkflowDefinition`.
+- **Lossless Round-Trip**: Supports seamless import and export between filesystem YAML definitions and the visual Web DAG Studio.
+
+#### 6.4.6 FlowMesh Resilient HTTP Client
+The `FlowMeshHttpClient` (`packages/connector-sdk/flowmesh_connector/http_client.py`) encapsulates `requests.Session` with enterprise-grade resilience:
+- **Connection Pooling**: Configurable `HTTPAdapter` with `pool_connections` and `pool_maxsize` parameters to optimize socket reuse.
+- **Automatic Retries & Exponential Jitter**: Integrates `urllib3.util.Retry` for idempotent HTTP methods (`GET`, `PUT`, `DELETE`, `OPTIONS`, `HEAD`), automatically retrying on HTTP 429, 500, 502, 503, and 504.
+- **Pluggable Authentication**: Transparently applies Basic Auth, Bearer Token, and custom API Key headers.
+
+#### 6.4.7 High-Performance Pandas Vectorized DataFrame Engine
+The `DataFrameEngine` (`packages/data-transform/flowmesh_transform/dataframe_engine.py`) provides robust in-memory analytics:
+- **Vectorized Data Transformations**: High-speed mathematical operations, type casting, and string manipulation.
+- **IQR Anomaly Detection**: `detect_outliers_iqr` computes the interquartile range ($Q_1$, $Q_3$, $\text{IQR} = Q_3 - Q_1$) to flag numeric values outside $[Q_1 - 1.5 \times \text{IQR}, Q_3 + 1.5 \times \text{IQR}]$.
+- **Multi-Source Dataset Merges**: Joins datasets across disparate enterprise systems (e.g. merging PostgreSQL orders with SAP billing records) supporting `inner`, `left`, `right`, and `outer` join semantics.
+- **Multidimensional Aggregation & CSV Export**: Aggregates records by dimensions (`sum`, `mean`, `count`, `min`, `max`) and outputs standardized CSV payloads.
+
 ---
+
 
 ## 7. Messaging & Event Backbone (NATS JetStream)
 

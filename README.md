@@ -56,6 +56,8 @@
   - [5. Schema Discovery & Drift Detection](#5-schema-discovery--drift-detection)
   - [6. Policy-as-Code Engine](#6-policy-as-code-engine)
   - [7. Read-Only AI Incident Reasoning](#7-read-only-ai-incident-reasoning)
+  - [8. Enterprise Systems Administration & Remote Fleet (ServiceNow, Active Directory, PowerShell, Paramiko)](#8-enterprise-systems-administration--remote-fleet)
+  - [9. Distributed Cron Scheduling & Vectorized Data Analytics (PyYAML, Requests, Pandas)](#9-distributed-cron-scheduling--vectorized-data-analytics)
 - [Distributed Observability & Telemetry](#-distributed-observability--telemetry)
 - [API Gateway Reference](#-api-gateway-reference)
 - [Architecture Decision Records (ADRs)](#-architecture-decision-records-adrs)
@@ -137,9 +139,14 @@ FlowMesh cleanly decouples the **Control Plane**, **Data Plane**, and **Customer
                        │  ├── Cryptographic Signature Verifier   │
                        │  └── Sandboxed Connector Executions     │
                        │                                         │
-                       │   ┌────────────┬───────────┬─────────┐  │
-                       │   ▼            ▼           ▼         ▼  │
-                       │ Postgres   REST APIs   Stripe/SAP  SFTP │
+                       │  ┌────────────┬───────────┬───────────┐ │
+                       │  ▼            ▼           ▼           │ │
+                       │ Postgres   REST APIs   Stripe/SAP     │ │
+                       │  ▼            ▼           ▼           │ │
+                       │ ServiceNow ActiveDir   Win/PowerShell │ │
+                       │  ▼            ▼           ▼           │ │
+                       │ SSH/SFTP   CronJobs    Pandas ETL     │ │
+                       │  └────────────┴───────────┴───────────┘ │
                        └─────────────────────────────────────────┘
 ```
 
@@ -158,17 +165,18 @@ flowmesh/
 ├── services/
 │   ├── enterprise-worker/      # Spring Boot 3 Java Enterprise Integration Worker
 │   ├── dotnet-worker/          # ASP.NET Core 8.0 WebAPI Worker & Batch Service
-│   ├── workflow-engine/        # Resumable State-Machine & Validation Engine
+│   ├── workflow-engine/        # Resumable State-Machine, Cron Scheduler & Validation Engine
 │   ├── event-router/           # Event Ingress & Bus Routing Engine
 │   └── incident-manager/       # Automated Failure Correlation & DLQ Replay
 ├── packages/
 │   ├── auth/                   # RBAC, Ed25519 Signing & Envelope Encryption
-│   ├── connector-sdk/          # Unified Connector Protocols (Python & Go)
-│   ├── data-transform/         # High-Performance DataFrame ETL & Polars Engine
+│   ├── connector-sdk/          # Unified Protocols, PowerShellRunner & FlowMeshHttpClient (Requests)
+│   ├── data-transform/         # High-Performance DataFrame ETL & Polars / Pandas Engine
 │   ├── search-engine/          # BM25 Tokenizer, Semantic Ranking & Typos
 │   ├── state-store/            # Pluggable StateStore (Redis, RediForge, Memory)
-│   └── workflow-schema/        # Workflow DAG JSON Schemas & Drift Detectors
+│   └── workflow-schema/        # Workflow DAG JSON Schemas, PyYAML Parser & Drift Detectors
 ├── connectors/
+│   ├── active_directory/       # Active Directory (AD DS) Identity, Group & Audit Connector
 │   ├── airflow/                # Apache Airflow Pipeline Trigger Connector
 │   ├── datalake/               # S3 / Parquet / Delta Data Lake Connector
 │   ├── ibmmq/                  # IBM MQ Enterprise Messaging Connector
@@ -178,7 +186,10 @@ flowmesh/
 │   ├── oracle/                 # Oracle Enterprise Database Connector
 │   ├── postgres/               # PostgreSQL Query & Introspection Connector
 │   ├── rest/                   # HTTP/HTTPS REST Client Connector
-│   └── stripe/                 # Stripe Payments & Invoicing Connector
+│   ├── servicenow/             # ServiceNow Enterprise ITSM (Table API / CMDB) Connector
+│   ├── ssh/                    # Paramiko SSH Remote Execution & SFTP Fleet Connector
+│   ├── stripe/                 # Stripe Payments & Invoicing Connector
+│   └── windows_admin/          # Windows Server Administration & PowerShell Connector
 ├── scripts/
 │   ├── seed_demo.py            # Complete Demo Tenant, DAG & Agent Provisioner
 │   ├── demo_e2e_showcase.py    # Master 90s Reviewer Walkthrough Demonstration
@@ -204,7 +215,7 @@ flowmesh/
 │   ├── i18n/                   # Global Language Translations (JA, ZH, HI, FR, KO, ES)
 │   └── README.md               # Master Technical Documentation Index
 └── tests/
-    ├── unit/                   # Fast Isolated Unit Tests (118 Tests)
+    ├── unit/                   # Fast Isolated Unit Tests (176+ Tests across 8 Enterprise Suites)
     ├── integration/            # Multi-Tenant & End-to-End API Audits (20 Tests)
     ├── e2e/                    # Selenium UI & Orchestration Verification
     ├── bdd/                    # Behavior-Driven Gherkin Acceptance Suites
@@ -434,6 +445,20 @@ FlowMesh includes a reliability-focused AI incident diagnostic assistant:
 - **Non-Destructive & Read-Only**: Analyzes OpenTelemetry traces, failure logs, and circuit breaker metrics to identify root causes (e.g., pool exhaustion, gateway timeouts).
 - **Human-in-the-Loop**: The assistant generates diagnosis reports and remediation plans but cannot perform write operations or deploy changes without explicit operator confirmation.
 
+### 8. Enterprise Systems Administration & Remote Fleet
+FlowMesh provides a hardened, unified interface for legacy on-premise infrastructure, Active Directory domain controllers, ITSM ticketing platforms, and remote server fleets:
+- **ServiceNow ITSM & CMDB Connector (`connectors/servicenow`)**: Built on the ServiceNow Table API v2. Supports bidirectional Incident synchronization (`create_incident`, `get_incident`), Change Request approval governance (`create_change_request`), and automated Configuration Item (CI) queries against the ServiceNow CMDB.
+- **Active Directory (AD DS) Identity & Compliance (`connectors/active_directory`)**: Native enterprise directory service supporting LDAP/LDAPS. Enforces employee lifecycle automation (`get_user`, `create_user`, `disable_user`, `unlock_user`), security group reconciliation (`add_user_to_group`), and scheduled stale account compliance auditing (`audit_stale_accounts`) for SOC 2 and ISO 27001 readiness.
+- **Windows Server Administration & Native PowerShell (`connectors/windows_admin`, `packages/connector-sdk`)**: `PowerShellRunner` executes native Windows cmdlets and scripts in isolated processes with `-NoProfile -NonInteractive -ExecutionPolicy Bypass` and structured JSON serialization (`ConvertTo-Json`). The connector manages Windows Services (`Get-Service`, `Restart-Service`), Event Log auditing (`Get-WinEvent`), and hardware/system health telemetry via CIM/WMI.
+- **Paramiko SSH / SFTP Fleet Management (`connectors/ssh`)**: Hardened SSHv2 and SFTP client built on `paramiko`. Supports authenticated remote execution (`exec_command`), strict host-key verification policy, and buffered file transfer operations (`sftp_upload`, `sftp_download`, `sftp_list`) for secure cross-datacenter settlement files.
+
+### 9. Distributed Cron Scheduling & Vectorized Data Analytics
+- **Scheduled Jobs & Cron Parser (`services/workflow-engine/flowmesh_engine/scheduler.py`)**: `CronScheduleParser` evaluates standard 5-part cron expressions (`minute hour dom month dow`), standard macros (`@hourly`, `@daily`, `@weekly`, `@monthly`), and custom interval timers. `WorkflowScheduler` maintains an in-memory or persisted job registry, coordinating with `StateStore` atomic distributed locks to prevent duplicate execution across horizontal worker nodes.
+- **PyYAML Workflow DAG Serialization (`packages/workflow-schema/flowmesh_workflow/yaml_parser.py`)**: `YamlWorkflowParser` provides safe loading (`yaml.safe_load`), validation against strict Pydantic workflow schemas, syntax error diagnostics, and lossless round-trip serialization between YAML files and the Web DAG Studio.
+- **Resilient Requests HTTP Client (`packages/connector-sdk/flowmesh_connector/http_client.py`)**: `FlowMeshHttpClient` encapsulates `requests.Session` with connection pooling (`pool_connections`, `pool_maxsize`), automatic retry adapters with exponential backoff and jitter (`urllib3.util.Retry`), and pluggable authentication providers (Bearer, Basic, API Key).
+- **Pandas Vectorized Data Transformation Engine (`packages/data-transform/flowmesh_transform/dataframe_engine.py`)**: `DataFrameEngine` delivers high-performance in-memory ETL: vectorized transformations, statistical profiling (`statistical_summary`), interquartile range anomaly detection (`detect_outliers_iqr`), multi-source dataset merges (inner, left, right, outer joins), multidimensional aggregations (`aggregate_by_dimension`), and CSV export capabilities.
+
+
 ---
 
 ## Distributed Observability & Telemetry
@@ -496,8 +521,18 @@ FlowMesh includes a comprehensive test suite covering all operational planes:
 cd services/enterprise-worker
 mvn clean test jacoco:report -B
 
-# 2. Python API, Connectors & StateStore Unit Tests
+# 2. Python API, Connectors & StateStore Unit Tests (176+ Tests)
 python -m pytest tests/unit -v --cov=apps --cov=connectors --cov-report=xml:coverage.xml
+
+# 3. Enterprise Connectors, PowerShell, Paramiko, Scheduler & Pandas Tests (28 Tests)
+python -m pytest tests/unit/test_servicenow_connector.py \
+  tests/unit/test_active_directory_connector.py \
+  tests/unit/test_windows_admin_and_powershell.py \
+  tests/unit/test_paramiko_ssh_connector.py \
+  tests/unit/test_scheduled_jobs.py \
+  tests/unit/test_yaml_workflow_parser.py \
+  tests/unit/test_requests_http_client.py \
+  tests/unit/test_pandas_transformations.py -v
 
 # 3. Chaos and Failure-Injection Tests
 python -m pytest tests/chaos -v
