@@ -19,6 +19,8 @@ services:
         generateValue: true
       - key: ENCRYPTION_MASTER_KEY
         generateValue: true
+      - key: AGENT_ENROLLMENT_SECRET
+        generateValue: true
       - key: ALLOWED_ORIGINS
         value: '["*"]'
 
