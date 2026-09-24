@@ -3,6 +3,8 @@ import { Urbanist } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
+import { OnboardingModal } from "@/components/OnboardingModal";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 
 const urbanist = Urbanist({
   subsets: ["latin"],
@@ -30,7 +32,10 @@ export default function RootLayout({
           <Header />
           <main className="ml-64 p-8 flex-1">{children}</main>
         </div>
+        <OnboardingModal />
+        <OnboardingChecklist />
       </body>
     </html>
   );
 }
+

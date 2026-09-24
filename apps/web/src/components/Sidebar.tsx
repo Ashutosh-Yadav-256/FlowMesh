@@ -271,6 +271,20 @@ export function Sidebar() {
       </div>
 
       <div className="p-3 border-t border-[#D5CABE] space-y-1">
+        <button
+          onClick={() => {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("flowmesh:open-onboarding"));
+            }
+          }}
+          className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-[#874436] hover:bg-[#F8EBE8] border border-[#EED1CB] bg-[#FDF6F5] transition-all shadow-xs group mb-1"
+        >
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 text-[#874436] group-hover:rotate-12 transition-transform" />
+            <span className="font-semibold">Getting Started Tour</span>
+          </div>
+          <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-white/80 border border-[#EED1CB]">4 Steps</span>
+        </button>
         {bottomNavItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           const Icon = item.icon;
