@@ -12,6 +12,10 @@ from connectors.mysql.connector import MySqlConnector
 from connectors.mongodb.connector import MongoDbConnector
 from connectors.datalake.connector import DataLakeConnector
 from connectors.airflow.connector import AirflowConnector
+from connectors.servicenow.connector import ServiceNowConnector
+from connectors.active_directory.connector import ActiveDirectoryConnector
+from connectors.windows_admin.connector import WindowsAdminConnector
+from connectors.ssh.connector import SshParamikoConnector
 
 __all__ = [
     "PostgresConnector",
@@ -23,6 +27,10 @@ __all__ = [
     "MongoDbConnector",
     "DataLakeConnector",
     "AirflowConnector",
+    "ServiceNowConnector",
+    "ActiveDirectoryConnector",
+    "WindowsAdminConnector",
+    "SshParamikoConnector",
 ]
 
 

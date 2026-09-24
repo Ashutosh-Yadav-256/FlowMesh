@@ -109,6 +109,50 @@ const fallbackConnections: ConnectionItem[] = [
     created_at: "2026-09-18",
     enabled: true,
   },
+  {
+    id: "conn_snow_01",
+    name: "ServiceNow Enterprise ITSM",
+    type: "servicenow",
+    status: "healthy",
+    agent_id: null,
+    config: { instance: "acme.service-now.com", api: "Table API v2" },
+    last_tested_at: "Just now",
+    created_at: "2026-09-24",
+    enabled: true,
+  },
+  {
+    id: "conn_ad_01",
+    name: "Active Directory (AD DS)",
+    type: "active_directory",
+    status: "healthy",
+    agent_id: "agent-prod-01",
+    config: { server: "dc01.corp.acme.local", domain: "corp.acme.local", port: 636 },
+    last_tested_at: "Just now",
+    created_at: "2026-09-24",
+    enabled: true,
+  },
+  {
+    id: "conn_win_01",
+    name: "Windows Server Fleet & PowerShell",
+    type: "windows_admin",
+    status: "healthy",
+    agent_id: "agent-prod-01",
+    config: { host: "win-srv01.corp.acme.local", winrm: true, execution_policy: "RemoteSigned" },
+    last_tested_at: "Just now",
+    created_at: "2026-09-24",
+    enabled: true,
+  },
+  {
+    id: "conn_ssh_01",
+    name: "Paramiko SSH & SFTP Fleet",
+    type: "ssh",
+    status: "healthy",
+    agent_id: "agent-prod-01",
+    config: { host: "bastion.corp.acme.local", port: 22, sftp_enabled: true },
+    last_tested_at: "Just now",
+    created_at: "2026-09-24",
+    enabled: true,
+  },
 ];
 
 export default function ConnectionsPage() {
@@ -305,6 +349,30 @@ export default function ConnectionsPage() {
       setConnPort("443");
       setConnDatabase("/v1/hooks");
       setConnUser("");
+    } else if (typeId === "servicenow") {
+      setConnName("ServiceNow Enterprise ITSM");
+      setConnHost("acme.service-now.com");
+      setConnPort("443");
+      setConnDatabase("incident,change_request,cmdb_ci");
+      setConnUser("admin");
+    } else if (typeId === "active_directory") {
+      setConnName("Active Directory (AD DS)");
+      setConnHost("dc01.corp.acme.local");
+      setConnPort("636");
+      setConnDatabase("DC=corp,DC=acme,DC=local");
+      setConnUser("svc_flowmesh");
+    } else if (typeId === "windows_admin") {
+      setConnName("Windows Server Fleet & PowerShell");
+      setConnHost("win-app-01.corp.acme.local");
+      setConnPort("5986");
+      setConnDatabase("WinRM / WMI / CimCmdlets");
+      setConnUser("Administrator");
+    } else if (typeId === "ssh") {
+      setConnName("Paramiko SSH & SFTP Fleet");
+      setConnHost("bastion-01.corp.acme.local");
+      setConnPort("22");
+      setConnDatabase("/var/log/audit");
+      setConnUser("devops");
     }
 
     setConnPassword("");
@@ -794,6 +862,10 @@ export default function ConnectionsPage() {
                             {conn.type === "rediforge" && <Flame className={`w-4 h-4 ${isEnabled ? "text-[#E17709]" : "text-[#968676]"}`} />}
                             {conn.type === "webhook" && <Radio className="w-4 h-4" />}
                             {conn.type === "stripe" && <Globe className={`w-4 h-4 ${isEnabled ? "text-[#455CA1]" : "text-[#968676]"}`} />}
+                            {conn.type === "servicenow" && <Server className={`w-4 h-4 ${isEnabled ? "text-[#874436]" : "text-[#968676]"}`} />}
+                            {conn.type === "active_directory" && <ShieldCheck className={`w-4 h-4 ${isEnabled ? "text-[#455CA1]" : "text-[#968676]"}`} />}
+                            {conn.type === "windows_admin" && <Power className={`w-4 h-4 ${isEnabled ? "text-[#2E6B47]" : "text-[#968676]"}`} />}
+                            {conn.type === "ssh" && <Lock className={`w-4 h-4 ${isEnabled ? "text-[#7A7165]" : "text-[#968676]"}`} />}
                           </span>
                           <div>
                             <div className="flex items-center gap-1.5">
@@ -970,6 +1042,38 @@ export default function ConnectionsPage() {
                       { id: "stripe", label: "Stripe Payments", icon: Globe, badge: "Official OAuth 2.0" },
                       { id: "rest", label: "REST API Endpoint", icon: Globe, badge: "Bearer / API Key" },
                       { id: "webhook", label: "Inbound Webhook", icon: Radio, badge: "Event Trigger" },
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      const isSelected = selectedType === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => handleSelectType(item.id)}
+                          className={`p-3 rounded-xl border text-left transition-all ${
+                            isSelected
+                              ? "bg-[#F8EBE8] border-[#874436] text-[#874436] shadow-sm ring-1 ring-[#874436]"
+                              : "bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300"
+                          }`}
+                        >
+                          <Icon className={`w-5 h-5 mb-1.5 ${isSelected ? "text-[#874436]" : "text-slate-500"}`} />
+                          <p className="font-bold text-xs text-slate-900">{item.label}</p>
+                          <span className="text-[10px] text-slate-500 font-mono">{item.badge}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                    Enterprise IT, Windows &amp; Systems Management (ServiceNow, AD DS, PowerShell, Paramiko)
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {[
+                      { id: "servicenow", label: "ServiceNow ITSM", icon: Server, badge: "Table API / CMDB" },
+                      { id: "active_directory", label: "Active Directory", icon: ShieldCheck, badge: "LDAPS / RBAC" },
+                      { id: "windows_admin", label: "Windows / PowerShell", icon: Power, badge: "WinRM / Cmdlets" },
+                      { id: "ssh", label: "Paramiko SSH/SFTP", icon: Lock, badge: "Paramiko Fleet" },
                     ].map((item) => {
                       const Icon = item.icon;
                       const isSelected = selectedType === item.id;

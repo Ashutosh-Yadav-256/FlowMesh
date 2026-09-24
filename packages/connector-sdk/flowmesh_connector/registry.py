@@ -1,15 +1,11 @@
 """
 FlowMesh Connector Registry
-
 Provides a centralized factory registry for looking up and registering connectors
 conforming to the frozen Connector Protocol.
 """
 
 from typing import Dict, Optional, List, Type
 from flowmesh_connector.protocol import Connector
-from connectors.postgres.connector import PostgresConnector
-from connectors.rest.connector import RestConnector
-from connectors.stripe.connector import StripeConnector
 
 
 class ConnectorRegistry:
@@ -17,10 +13,55 @@ class ConnectorRegistry:
 
     def __init__(self) -> None:
         self._connectors: Dict[str, Connector] = {}
+        self._defaults_loaded: bool = False
 
-        self.register("postgres", PostgresConnector())
-        self.register("rest", RestConnector())
-        self.register("stripe", StripeConnector())
+    def _ensure_defaults(self) -> None:
+        """Lazily registers built-in connectors to prevent circular module initialization."""
+        if self._defaults_loaded:
+            return
+        self._defaults_loaded = True
+
+        try:
+            from connectors.postgres.connector import PostgresConnector
+            self.register("postgres", PostgresConnector())
+        except Exception:
+            pass
+
+        try:
+            from connectors.rest.connector import RestConnector
+            self.register("rest", RestConnector())
+        except Exception:
+            pass
+
+        try:
+            from connectors.stripe.connector import StripeConnector
+            self.register("stripe", StripeConnector())
+        except Exception:
+            pass
+
+        try:
+            from connectors.servicenow.connector import ServiceNowConnector
+            self.register("servicenow", ServiceNowConnector())
+        except Exception:
+            pass
+
+        try:
+            from connectors.active_directory.connector import ActiveDirectoryConnector
+            self.register("active_directory", ActiveDirectoryConnector())
+        except Exception:
+            pass
+
+        try:
+            from connectors.windows_admin.connector import WindowsAdminConnector
+            self.register("windows_admin", WindowsAdminConnector())
+        except Exception:
+            pass
+
+        try:
+            from connectors.ssh.connector import SshParamikoConnector
+            self.register("ssh", SshParamikoConnector())
+        except Exception:
+            pass
 
     def register(self, conn_type: str, connector: Connector) -> None:
         """Registers a connector implementation for a specific connection type."""
@@ -28,10 +69,12 @@ class ConnectorRegistry:
 
     def get(self, conn_type: str) -> Optional[Connector]:
         """Looks up a connector by type. Falls back to rest/postgres or returns None."""
+        self._ensure_defaults()
         return self._connectors.get(conn_type.lower())
 
     def list_types(self) -> List[str]:
         """Returns all registered connector types."""
+        self._ensure_defaults()
         return list(self._connectors.keys())
 
 

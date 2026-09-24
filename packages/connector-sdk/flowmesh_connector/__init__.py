@@ -15,7 +15,6 @@ from flowmesh_connector.protocol import (
     TestStepResult,
 )
 from flowmesh_connector.base import BaseConnector
-from connectors.stripe.connector import StripeConnector
 from flowmesh_connector.registry import (
     ConnectorRegistry,
     registry,
@@ -35,9 +34,9 @@ __all__ = [
     "TestResult",
     "TestStepResult",
     "BaseConnector",
-    "StripeConnector",
     "ConnectorRegistry",
     "registry",
     "get_connector",
     "register_connector",
 ]
+

@@ -130,8 +130,14 @@ export default function WorkflowsPage() {
   const isValid = validationErrors.length === 0;
 
   const nodePalette = [
+    { type: "trigger.cron", label: "Scheduled Cron Job", badge: "Schedule", icon: Clock, detail: "5-part cron (e.g. 0 2 * * *) or interval timer" },
     { type: "trigger.webhook", label: "Webhook Ingress", badge: "Trigger", icon: Globe, detail: "Ingest HTTP webhook" },
     { type: "trigger.event", label: "Event Ingress", badge: "Trigger", icon: Radio, detail: "Subscribe to event topic" },
+    { type: "action.servicenow", label: "ServiceNow ITSM", badge: "ITSM", icon: Globe, detail: "Create incident or change request", conn: "conn_snow_01" },
+    { type: "action.active_directory", label: "Active Directory", badge: "Identity", icon: UserCheck, detail: "Provision/disable user or group audit", conn: "conn_ad_01" },
+    { type: "action.powershell", label: "PowerShell Cmdlet", badge: "Script", icon: FileCode, detail: "Execute cmdlet or restart Windows service", conn: "conn_win_01" },
+    { type: "action.paramiko_ssh", label: "Paramiko SSH/SFTP", badge: "SSH", icon: Layers, detail: "Remote execution & secure file transfer", conn: "conn_ssh_01" },
+    { type: "transform.pandas", label: "Pandas Transform", badge: "Data", icon: Database, detail: "IQR outlier detection & dataframe merges" },
     { type: "action.db_query", label: "Postgres Read", badge: "Database", icon: Database, detail: "SQL Query via Edge Agent", conn: "conn_pg_01" },
     { type: "action.db_write", label: "Postgres Write", badge: "Database", icon: Database, detail: "SQL Insert/Update (ACID)", conn: "conn_pg_01" },
     { type: "action.http", label: "REST Gateway", badge: "HTTP", icon: Globe, detail: "HTTP REST call (Retries x3)", conn: "conn_rest_01" },
