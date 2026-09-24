@@ -1,5 +1,6 @@
-from typing import List
-from pydantic import model_validator
+from typing import List, Any
+import json
+from pydantic import model_validator, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _DEV_SECRET_PREFIX = "dev-flowmesh-"
@@ -32,6 +33,22 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
         "http://localhost:8000",
     ]
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def parse_allowed_origins(cls, v: Any) -> List[str]:
+        if isinstance(v, str):
+            v = v.strip()
+            if v == "*":
+                return ["*"]
+            if v.startswith("[") and v.endswith("]"):
+                try:
+                    return json.loads(v)
+                except Exception:
+                    pass
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
+
     allowed_methods: List[str] = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
     allowed_headers: List[str] = ["Authorization", "Content-Type", "X-Tenant-ID", "X-Request-ID"]
     allow_credentials: bool = True
