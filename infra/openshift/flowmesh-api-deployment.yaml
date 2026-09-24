@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flowmesh-api
+  namespace: flowmesh-enterprise
+  labels:
+    app.kubernetes.io/name: flowmesh-api
+    app.kubernetes.io/part-of: flowmesh-platform
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: flowmesh-api
+  template:
+    metadata:
+      labels:
+        app: flowmesh-api
+    spec:
+      serviceAccountName: flowmesh-sa
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: image-registry.openshift-image-registry.svc:5000/flowmesh-enterprise/api:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: ENVIRONMENT
+              value: "production"
+            - name: PORT
+              value: "8000"
+            - name: EVENT_BROKER_DRIVER
+              value: "kafka"
+          envFrom:
+            - configMapRef:
+                name: flowmesh-config
+            - secretRef:
+                name: flowmesh-secrets
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flowmesh-api
+  namespace: flowmesh-enterprise
+  labels:
+    app: flowmesh-api
+spec:
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: http
+  selector:
+    app: flowmesh-api

@@ -1,0 +1,16 @@
+apiVersion: v2
+name: flowmesh
+description: Enterprise integration and workflow platform Helm chart.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - workflow
+  - integration
+  - orchestrator
+  - edge-agent
+  - automation
+home: https://flowmesh.io
+maintainers:
+  - name: FlowMesh Contributors
+    email: maintainers@flowmesh.io

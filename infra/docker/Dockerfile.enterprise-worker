@@ -1,0 +1,44 @@
+# ==============================================================================
+# FlowMesh Enterprise Worker - Multi-Stage Optimized Dockerfile
+# Base: Eclipse Temurin Java 17 LTS / JRE Alpine
+# ==============================================================================
+
+# --- Stage 1: Build & Package ---
+FROM maven:3.9.8-eclipse-temurin-17-alpine AS builder
+
+WORKDIR /build
+
+# Cache Maven dependencies layer
+COPY services/enterprise-worker/pom.xml .
+RUN mvn dependency:go-offline -B
+
+# Compile application and generate JaCoCo coverage reports
+COPY services/enterprise-worker/src ./src
+RUN mvn clean package -DskipTests=false -B
+
+# --- Stage 2: Hardened Minimal Runtime ---
+FROM eclipse-temurin:17-jre-alpine AS runner
+
+WORKDIR /app
+
+# Add unprivileged system user for zero-trust container security
+RUN addgroup -S flowmesh && adduser -S flowmesh -G flowmesh && \
+    mkdir -p /var/log/flowmesh/dumps && \
+    chown -R flowmesh:flowmesh /app /var/log/flowmesh
+
+# Copy compiled executable JAR and production JVM tuning options
+COPY --from=builder --chown=flowmesh:flowmesh /build/target/enterprise-worker-*.jar /app/enterprise-worker.jar
+COPY --chown=flowmesh:flowmesh services/enterprise-worker/jvm.options /app/jvm.options
+
+USER flowmesh
+
+ENV PORT=8082 \
+    SPRING_PROFILES_ACTIVE=prod \
+    JAVA_TOOL_OPTIONS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+
+EXPOSE 8082
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8082/actuator/health || exit 1
+
+ENTRYPOINT ["java", "-XX:+UseG1GC", "-XX:MaxGCPauseMillis=200", "-XX:+HeapDumpOnOutOfMemoryError", "-XX:HeapDumpPath=/var/log/flowmesh/dumps/", "-jar", "/app/enterprise-worker.jar"]

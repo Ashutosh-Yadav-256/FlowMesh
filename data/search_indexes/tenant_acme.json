@@ -1,0 +1,641 @@
+[
+  {
+    "id": "conn_rest_2e35ad",
+    "tenant_id": "tenant_acme",
+    "entity_type": "connection",
+    "title": "Validation Test Conn (REST)",
+    "description": "Type: rest | Status: healthy | Agent: cloud",
+    "tags": [
+      "rest",
+      "healthy",
+      "connection",
+      "connector"
+    ],
+    "status": "healthy",
+    "url": "/connections",
+    "payload": {
+      "config": {
+        "base_url": "https://api.example.com"
+      },
+      "type": "rest"
+    },
+    "created_at": "2026-09-24T11:58:24.231580",
+    "updated_at": null
+  },
+  {
+    "id": "conn_pg_01",
+    "tenant_id": "tenant_acme",
+    "entity_type": "connection",
+    "title": "Orders DB (POSTGRES)",
+    "description": "Type: postgres | Status: healthy | Agent: agent-prod-01",
+    "tags": [
+      "postgres",
+      "healthy",
+      "connection",
+      "connector"
+    ],
+    "status": "healthy",
+    "url": "/connections",
+    "payload": {
+      "config": {
+        "host": "10.0.4.12",
+        "port": 5432,
+        "database": "production_orders",
+        "ssl_mode": "require"
+      },
+      "type": "postgres"
+    },
+    "created_at": "2026-09-24T11:58:01.561407",
+    "updated_at": null
+  },
+  {
+    "id": "conn_redis_01",
+    "tenant_id": "tenant_acme",
+    "entity_type": "connection",
+    "title": "RediForge Cache & Lock (REDIFORGE)",
+    "description": "Type: rediforge | Status: healthy | Agent: cloud",
+    "tags": [
+      "rediforge",
+      "healthy",
+      "connection",
+      "connector"
+    ],
+    "status": "healthy",
+    "url": "/connections",
+    "payload": {
+      "config": {
+        "host": "localhost",
+        "port": 6379,
+        "tls_enabled": true
+      },
+      "type": "rediforge"
+    },
+    "created_at": "2026-09-24T11:58:01.561407",
+    "updated_at": null
+  },
+  {
+    "id": "conn_rest_01",
+    "tenant_id": "tenant_acme",
+    "entity_type": "connection",
+    "title": "Warehouse API (REST)",
+    "description": "Type: rest | Status: healthy | Agent: agent-prod-01",
+    "tags": [
+      "rest",
+      "healthy",
+      "connection",
+      "connector"
+    ],
+    "status": "healthy",
+    "url": "/connections",
+    "payload": {
+      "config": {
+        "base_url": "https://internal-warehouse.corp.local/v2",
+        "timeout_seconds": 10
+      },
+      "type": "rest"
+    },
+    "created_at": "2026-09-24T11:58:01.561407",
+    "updated_at": null
+  },
+  {
+    "id": "conn_sap_01",
+    "tenant_id": "tenant_acme",
+    "entity_type": "connection",
+    "title": "Enterprise SAP ERP (SAP)",
+    "description": "Type: sap | Status: healthy | Agent: agent-prod-01",
+    "tags": [
+      "sap",
+      "healthy",
+      "connection",
+      "connector"
+    ],
+    "status": "healthy",
+    "url": "/connections",
+    "payload": {
+      "config": {
+        "system_id": "PRD",
+        "client": "100",
+        "gateway_host": "10.0.8.5"
+      },
+      "type": "sap"
+    },
+    "created_at": "2026-09-24T11:58:01.561407",
+    "updated_at": null
+  },
+  {
+    "id": "conn_hook_01",
+    "tenant_id": "tenant_acme",
+    "entity_type": "connection",
+    "title": "Customer Webhook (WEBHOOK)",
+    "description": "Type: webhook | Status: healthy | Agent: cloud",
+    "tags": [
+      "webhook",
+      "healthy",
+      "connection",
+      "connector"
+    ],
+    "status": "healthy",
+    "url": "/connections",
+    "payload": {
+      "config": {
+        "endpoint": "https://api.flowmesh.dev/v1/hooks/cust_982",
+        "method": "POST"
+      },
+      "type": "webhook"
+    },
+    "created_at": "2026-09-24T11:58:01.561407",
+    "updated_at": null
+  },
+  {
+    "id": "wf_34d94782",
+    "tenant_id": "tenant_acme",
+    "entity_type": "workflow",
+    "title": "API Approval Pipeline",
+    "description": "Workflow with 3 steps: Start, Gate, End",
+    "tags": [
+      "webhook",
+      "active",
+      "v2",
+      "workflow",
+      "start",
+      "gate",
+      "end"
+    ],
+    "status": "active",
+    "url": "/workflows",
+    "payload": {
+      "version": 2,
+      "trigger_type": "webhook"
+    },
+    "created_at": "2026-09-24T11:58:10.114549",
+    "updated_at": null
+  },
+  {
+    "id": "wf_632b4a5c",
+    "tenant_id": "tenant_acme",
+    "entity_type": "workflow",
+    "title": "Extended Nodes Pipeline",
+    "description": "Workflow with 5 steps: Event Ingress, Backpressure Delay, Sync External Systems",
+    "tags": [
+      "event",
+      "active",
+      "v1",
+      "workflow",
+      "event ingress",
+      "backpressure delay",
+      "sync external systems",
+      "emit routed event",
+      "alert teams"
+    ],
+    "status": "active",
+    "url": "/workflows",
+    "payload": {
+      "version": 1,
+      "trigger_type": "event"
+    },
+    "created_at": "2026-09-24T11:58:09.943882",
+    "updated_at": null
+  },
+  {
+    "id": "wf_5ff0a23f",
+    "tenant_id": "tenant_acme",
+    "entity_type": "workflow",
+    "title": "Sensitive Export DAG",
+    "description": "Workflow with 3 steps: Export Request, Security Signoff, Send Data",
+    "tags": [
+      "webhook",
+      "active",
+      "v1",
+      "workflow",
+      "export request",
+      "security signoff",
+      "send data"
+    ],
+    "status": "active",
+    "url": "/workflows",
+    "payload": {
+      "version": 1,
+      "trigger_type": "webhook"
+    },
+    "created_at": "2026-09-24T11:58:09.851184",
+    "updated_at": null
+  },
+  {
+    "id": "wf_be200ff9",
+    "tenant_id": "tenant_acme",
+    "entity_type": "workflow",
+    "title": "Expense Approval DAG",
+    "description": "Expense pipeline with approval gate",
+    "tags": [
+      "webhook",
+      "active",
+      "v1",
+      "workflow",
+      "expense ingress",
+      "manager review gate",
+      "notify finance",
+      "audit"
+    ],
+    "status": "active",
+    "url": "/workflows",
+    "payload": {
+      "version": 1,
+      "trigger_type": "webhook"
+    },
+    "created_at": "2026-09-24T11:58:09.711577",
+    "updated_at": null
+  },
+  {
+    "id": "wf_order_processing",
+    "tenant_id": "tenant_acme",
+    "entity_type": "workflow",
+    "title": "Order Processing",
+    "description": "End-to-end processing: Webhook Order -> Validate -> Customer Lookup -> PostgreSQL -> Warehouse Notify -> Audit",
+    "tags": [
+      "webhook",
+      "active",
+      "v4",
+      "workflow",
+      "webhook order ingress",
+      "validate order payload",
+      "customer lookup",
+      "notify warehouse",
+      "audit order record"
+    ],
+    "status": "active",
+    "url": "/workflows",
+    "payload": {
+      "version": 4,
+      "trigger_type": "webhook"
+    },
+    "created_at": "2026-09-24T11:58:01.561407",
+    "updated_at": null
+  },
+  {
+    "id": "wf_customer_sync",
+    "tenant_id": "tenant_acme",
+    "entity_type": "workflow",
+    "title": "Customer Sync",
+    "description": "Sync customer updates across CRM and PostgreSQL",
+    "tags": [
+      "webhook",
+      "active",
+      "v1",
+      "workflow",
+      "customer webhook",
+      "normalize customer",
+      "sync db",
+      "audit"
+    ],
+    "status": "active",
+    "url": "/workflows",
+    "payload": {
+      "version": 1,
+      "trigger_type": "webhook"
+    },
+    "created_at": "2026-09-24T11:58:01.561407",
+    "updated_at": null
+  },
+  {
+    "id": "wf_payment_reconciliation",
+    "tenant_id": "tenant_acme",
+    "entity_type": "workflow",
+    "title": "Daily Payment Reconciliation",
+    "description": "Nightly batch matching between Stripe charges and bank ledger",
+    "tags": [
+      "event",
+      "active",
+      "v2",
+      "workflow",
+      "reconciliation schedule",
+      "update cache",
+      "emit audit log"
+    ],
+    "status": "active",
+    "url": "/workflows",
+    "payload": {
+      "version": 2,
+      "trigger_type": "event"
+    },
+    "created_at": "2026-09-24T11:58:01.561407",
+    "updated_at": null
+  },
+  {
+    "id": "RUN-API-APPR-5BCD8C",
+    "tenant_id": "tenant_acme",
+    "entity_type": "run",
+    "title": "RUN-API-APPR-5BCD8C (wf_34d94782)",
+    "description": "Status: SUCCESS | Duration: 0.021s | Trigger: webhook",
+    "tags": [
+      "SUCCESS",
+      "wf_34d94782",
+      "webhook",
+      "run"
+    ],
+    "status": "SUCCESS",
+    "url": "/runs",
+    "payload": {
+      "workflow_id": "wf_34d94782",
+      "trace_id": "251feabd65f54dbd8b5937762b28b6bb"
+    },
+    "created_at": "2026-09-24T11:58:10.174677",
+    "updated_at": null
+  },
+  {
+    "id": "RUN-EXT-77191B",
+    "tenant_id": "tenant_acme",
+    "entity_type": "run",
+    "title": "RUN-EXT-77191B (wf_order_processing)",
+    "description": "Status: SUCCESS | Duration: 0.102s | Trigger: webhook",
+    "tags": [
+      "SUCCESS",
+      "wf_order_processing",
+      "webhook",
+      "run"
+    ],
+    "status": "SUCCESS",
+    "url": "/runs",
+    "payload": {
+      "workflow_id": "wf_order_processing",
+      "trace_id": "6d5efc8e174b45fd9e4862468ccae560"
+    },
+    "created_at": "2026-09-24T11:58:09.950146",
+    "updated_at": null
+  },
+  {
+    "id": "RUN-REJ-377628",
+    "tenant_id": "tenant_acme",
+    "entity_type": "run",
+    "title": "RUN-REJ-377628 (wf_5ff0a23f)",
+    "description": "Status: REJECTED | Duration: 0.02s | Trigger: webhook",
+    "tags": [
+      "REJECTED",
+      "wf_5ff0a23f",
+      "webhook",
+      "run"
+    ],
+    "status": "REJECTED",
+    "url": "/runs",
+    "payload": {
+      "workflow_id": "wf_5ff0a23f",
+      "trace_id": "da9065811bc344b5ae3c993998764fb7"
+    },
+    "created_at": "2026-09-24T11:58:09.855179",
+    "updated_at": null
+  },
+  {
+    "id": "RUN-APPR-8954D7",
+    "tenant_id": "tenant_acme",
+    "entity_type": "run",
+    "title": "RUN-APPR-8954D7 (wf_be200ff9)",
+    "description": "Status: SUCCESS | Duration: 0.033s | Trigger: webhook",
+    "tags": [
+      "SUCCESS",
+      "wf_be200ff9",
+      "webhook",
+      "run"
+    ],
+    "status": "SUCCESS",
+    "url": "/runs",
+    "payload": {
+      "workflow_id": "wf_be200ff9",
+      "trace_id": "9e20a1739aad44ae8926d6fa34da90ef"
+    },
+    "created_at": "2026-09-24T11:58:09.716576",
+    "updated_at": null
+  },
+  {
+    "id": "RUN-92830",
+    "tenant_id": "tenant_acme",
+    "entity_type": "run",
+    "title": "RUN-92830 (wf_order_processing)",
+    "description": "Status: FAILED | Duration: 4.12s | Trigger: SAP Event #evt_98233",
+    "tags": [
+      "FAILED",
+      "wf_order_processing",
+      "SAP Event #evt_98233",
+      "run"
+    ],
+    "status": "FAILED",
+    "url": "/runs",
+    "payload": {
+      "workflow_id": "wf_order_processing",
+      "trace_id": "8cf92f3577b34da6a3ce929d0e0e9981"
+    },
+    "created_at": "2026-09-24T11:58:01.561407",
+    "updated_at": null
+  },
+  {
+    "id": "RUN-92831",
+    "tenant_id": "tenant_acme",
+    "entity_type": "run",
+    "title": "RUN-92831 (wf_order_processing)",
+    "description": "Status: SUCCESS | Duration: 2.84s | Trigger: SAP Event #evt_98231",
+    "tags": [
+      "SUCCESS",
+      "wf_order_processing",
+      "SAP Event #evt_98231",
+      "run"
+    ],
+    "status": "SUCCESS",
+    "url": "/runs",
+    "payload": {
+      "workflow_id": "wf_order_processing",
+      "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
+    },
+    "created_at": "2026-09-24T11:58:01.561407",
+    "updated_at": null
+  },
+  {
+    "id": "INC-1932",
+    "tenant_id": "tenant_acme",
+    "entity_type": "incident",
+    "title": "Warehouse API Gateway Timeout (HTTP 503)",
+    "description": "Upstream warehouse endpoint timeout triggering circuit breaker open state on order inventory validation step",
+    "tags": [
+      "incident",
+      "timeout",
+      "http 503",
+      "warehouse",
+      "circuit_breaker"
+    ],
+    "status": "RECOVERED",
+    "url": "/incidents",
+    "payload": {
+      "severity": "HIGH",
+      "error_code": "HTTP_503"
+    },
+    "created_at": null,
+    "updated_at": null
+  },
+  {
+    "id": "act_nav_workflows_tenant_acme",
+    "tenant_id": "tenant_acme",
+    "entity_type": "action",
+    "title": "Go to Workflows Studio",
+    "description": "Visual DAG canvas, topological validation, and version deployments",
+    "tags": [
+      "workflows",
+      "dag",
+      "builder",
+      "deploy",
+      "studio"
+    ],
+    "status": "ACTION",
+    "url": "/workflows",
+    "payload": {},
+    "created_at": null,
+    "updated_at": null
+  },
+  {
+    "id": "act_nav_connections_tenant_acme",
+    "tenant_id": "tenant_acme",
+    "entity_type": "action",
+    "title": "Go to Connections",
+    "description": "Manage PostgreSQL, SAP ERP, REST, Kafka, and Redis integrations",
+    "tags": [
+      "connections",
+      "integrations",
+      "postgres",
+      "sap",
+      "secrets"
+    ],
+    "status": "ACTION",
+    "url": "/connections",
+    "payload": {},
+    "created_at": null,
+    "updated_at": null
+  },
+  {
+    "id": "act_nav_runs_tenant_acme",
+    "tenant_id": "tenant_acme",
+    "entity_type": "action",
+    "title": "Go to Execution Runs",
+    "description": "Deterministic step execution history, timeline view, and replays",
+    "tags": [
+      "runs",
+      "history",
+      "execution",
+      "timeline",
+      "replay"
+    ],
+    "status": "ACTION",
+    "url": "/runs",
+    "payload": {},
+    "created_at": null,
+    "updated_at": null
+  },
+  {
+    "id": "act_nav_incidents_tenant_acme",
+    "tenant_id": "tenant_acme",
+    "entity_type": "action",
+    "title": "Go to Incidents & DLQ",
+    "description": "AI failure diagnosis, circuit breakers, and dead letter queue",
+    "tags": [
+      "incidents",
+      "dlq",
+      "errors",
+      "circuit breaker",
+      "timeout"
+    ],
+    "status": "ACTION",
+    "url": "/incidents",
+    "payload": {},
+    "created_at": null,
+    "updated_at": null
+  },
+  {
+    "id": "act_nav_agents_tenant_acme",
+    "tenant_id": "tenant_acme",
+    "entity_type": "action",
+    "title": "Go to Edge Agents",
+    "description": "Daemon fleet status, mTLS certificates, and CPU/memory metrics",
+    "tags": [
+      "agents",
+      "edge",
+      "fleet",
+      "daemons",
+      "mtls"
+    ],
+    "status": "ACTION",
+    "url": "/agents",
+    "payload": {},
+    "created_at": null,
+    "updated_at": null
+  },
+  {
+    "id": "act_nav_events_tenant_acme",
+    "tenant_id": "tenant_acme",
+    "entity_type": "action",
+    "title": "Go to Event Stream",
+    "description": "NATS JetStream real-time CloudEvents feed and payload inspection",
+    "tags": [
+      "events",
+      "nats",
+      "jetstream",
+      "cloudevents",
+      "stream"
+    ],
+    "status": "ACTION",
+    "url": "/events",
+    "payload": {},
+    "created_at": null,
+    "updated_at": null
+  },
+  {
+    "id": "act_nav_audit_tenant_acme",
+    "tenant_id": "tenant_acme",
+    "entity_type": "action",
+    "title": "Go to Audit Trail",
+    "description": "Cryptographically sealed tamper-evident immutable activity ledger",
+    "tags": [
+      "audit",
+      "compliance",
+      "tamper-evident",
+      "security",
+      "ledger"
+    ],
+    "status": "ACTION",
+    "url": "/audit",
+    "payload": {},
+    "created_at": null,
+    "updated_at": null
+  },
+  {
+    "id": "act_nav_settings_tenant_acme",
+    "tenant_id": "tenant_acme",
+    "entity_type": "action",
+    "title": "Go to Platform Settings",
+    "description": "RediForge StateStore, envelope encryption, and telemetry config",
+    "tags": [
+      "settings",
+      "config",
+      "encryption",
+      "state store"
+    ],
+    "status": "ACTION",
+    "url": "/settings",
+    "payload": {},
+    "created_at": null,
+    "updated_at": null
+  },
+  {
+    "id": "act_nav_org_tenant_acme",
+    "tenant_id": "tenant_acme",
+    "entity_type": "action",
+    "title": "Go to Organization & API Keys",
+    "description": "Manage API keys, team members, and Okta RBAC permissions",
+    "tags": [
+      "organization",
+      "api keys",
+      "rbac",
+      "security",
+      "tokens"
+    ],
+    "status": "ACTION",
+    "url": "/organization",
+    "payload": {},
+    "created_at": null,
+    "updated_at": null
+  }
+]

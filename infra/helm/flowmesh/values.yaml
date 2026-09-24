@@ -1,0 +1,60 @@
+
+replicaCount:
+  api: 2
+  web: 2
+
+image:
+  api:
+    repository: flowmesh/api
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  web:
+    repository: flowmesh/web
+    pullPolicy: IfNotPresent
+    tag: "latest"
+
+environment: "production"
+
+ingress:
+  enabled: true
+  className: "nginx"
+  host: "flowmesh.internal"
+  tls: []
+
+resources:
+  api:
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  web:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 150m
+      memory: 256Mi
+
+persistence:
+  postgres:
+    storage: 20Gi
+  nats:
+    storage: 10Gi
+
+externalDatabase:
+  enabled: false
+  host: ""
+  port: 5432
+  user: ""
+  password: ""
+  database: ""
+
+externalRedis:
+  enabled: false
+  url: ""
+
+externalNats:
+  enabled: false
+  url: ""

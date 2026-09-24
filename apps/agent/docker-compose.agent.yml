@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  flowmesh-agent:
+    image: flowmesh/agent:latest
+    build:
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.agent
+    container_name: flowmesh-edge-agent
+    restart: unless-stopped
+    environment:
+      - AGENT_ID=${AGENT_ID:-agent-prod-vpc-01}
+      - TENANT_ID=${TENANT_ID:-tenant_acme}
+      - CONTROL_PLANE_URL=${CONTROL_PLANE_URL:-http://host.docker.internal:8000}
+      - ENROLLMENT_TOKEN=${ENROLLMENT_TOKEN:-demo-enroll-token-12345}
+      - HEARTBEAT_INTERVAL=5s
+      - POLL_INTERVAL=1s
+      - BUFFER_PATH=/data/queue.db
+    volumes:
+      - ./config/config.yaml:/etc/flowmesh/config.yaml:ro
+      - agent-buffer-data:/data
+    networks:
+      - customer-internal-network
+
+networks:
+  customer-internal-network:
+    name: customer-internal-network
+    driver: bridge
+
+volumes:
+  agent-buffer-data:

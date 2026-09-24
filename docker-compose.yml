@@ -1,0 +1,165 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: flowmesh-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-flowmesh}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-flowmesh_secure_password}
+      POSTGRES_DB: ${POSTGRES_DB:-flowmesh}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-flowmesh} -d ${POSTGRES_DB:-flowmesh}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - flowmesh-network
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: flowmesh-nats
+    restart: unless-stopped
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8222/varz"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - flowmesh-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: flowmesh-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - flowmesh-network
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.api
+    container_name: flowmesh-api
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-flowmesh}:${POSTGRES_PASSWORD:-flowmesh_secure_password}@postgres:5432/${POSTGRES_DB:-flowmesh}
+      - NATS_URL=nats://nats:4222
+      - REDIS_URL=redis://redis:6379/0
+      - API_SECRET_KEY=${API_SECRET_KEY:-dev-flowmesh-secret-key-replace-in-production-at-least-32-chars}
+      - ENCRYPTION_MASTER_KEY=${ENCRYPTION_MASTER_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - flowmesh-network
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.web
+    container_name: flowmesh-web
+    restart: unless-stopped
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+      - flowmesh-network
+
+  enterprise-worker:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.enterprise-worker
+    container_name: flowmesh-enterprise-worker
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-flowmesh}
+      - DB_USER=${POSTGRES_USER:-flowmesh}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-flowmesh_secure_password}
+      - ENVIRONMENT=production
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - flowmesh-network
+
+  prometheus:
+    image: prom/prometheus:v2.54.0
+    container_name: flowmesh-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    networks:
+      - flowmesh-network
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: flowmesh-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - flowmesh-network
+
+networks:
+  flowmesh-network:
+    name: flowmesh-network
+    driver: bridge
+
+volumes:
+  postgres-data:
+  nats-data:
+  redis-data:
+  prometheus-data:
+  grafana-data:

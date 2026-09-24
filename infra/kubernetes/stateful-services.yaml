@@ -1,0 +1,133 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: flowmesh-postgres
+  namespace: flowmesh
+spec:
+  serviceName: flowmesh-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flowmesh-postgres
+  template:
+    metadata:
+      labels:
+        app: flowmesh-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+              name: postgres
+          envFrom:
+            - secretRef:
+                name: flowmesh-secrets
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 20Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flowmesh-postgres
+  namespace: flowmesh
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: flowmesh-postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: flowmesh-nats
+  namespace: flowmesh
+spec:
+  serviceName: flowmesh-nats
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flowmesh-nats
+  template:
+    metadata:
+      labels:
+        app: flowmesh-nats
+    spec:
+      containers:
+        - name: nats
+          image: nats:2.10-alpine
+          args: ["-js", "-m", "8222", "-sd", "/data"]
+          ports:
+            - containerPort: 4222
+              name: client
+            - containerPort: 8222
+              name: monitor
+          volumeMounts:
+            - name: nats-data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: nats-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flowmesh-nats
+  namespace: flowmesh
+spec:
+  ports:
+    - port: 4222
+      name: client
+    - port: 8222
+      name: monitor
+  selector:
+    app: flowmesh-nats
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flowmesh-redis
+  namespace: flowmesh
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flowmesh-redis
+  template:
+    metadata:
+      labels:
+        app: flowmesh-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          args: ["redis-server", "--appendonly", "yes"]
+          ports:
+            - containerPort: 6379
+              name: redis
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flowmesh-redis
+  namespace: flowmesh
+spec:
+  ports:
+    - port: 6379
+  selector:
+    app: flowmesh-redis

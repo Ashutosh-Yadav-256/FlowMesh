@@ -1,0 +1,18 @@
+[
+  {
+    "id": "INC-1932",
+    "tenant_id": "tenant_hybrid",
+    "entity_type": "incident",
+    "title": "Warehouse API Gateway Timeout",
+    "description": "HTTP 503 upstream gateway timeout on inventory check step",
+    "tags": [
+      "circuit_breaker",
+      "timeout"
+    ],
+    "status": "RECOVERED",
+    "url": null,
+    "payload": {},
+    "created_at": null,
+    "updated_at": null
+  }
+]

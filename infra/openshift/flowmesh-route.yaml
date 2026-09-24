@@ -1,0 +1,40 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: flowmesh-console-route
+  namespace: flowmesh-enterprise
+  labels:
+    app: flowmesh-web
+  annotations:
+    haproxy.router.openshift.io/timeout: "60s"
+    haproxy.router.openshift.io/rewrite-target: "/"
+spec:
+  to:
+    kind: Service
+    name: flowmesh-web
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: flowmesh-api-route
+  namespace: flowmesh-enterprise
+  labels:
+    app: flowmesh-api
+  annotations:
+    haproxy.router.openshift.io/timeout: "120s"
+spec:
+  to:
+    kind: Service
+    name: flowmesh-api
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

@@ -1,0 +1,50 @@
+[
+  {
+    "id": "conn_pg_01",
+    "tenant_id": "tenant_test",
+    "entity_type": "connection",
+    "title": "Orders DB (Postgres 16)",
+    "description": "Production PostgreSQL read-write replica",
+    "tags": [
+      "database",
+      "sql"
+    ],
+    "status": "HEALTHY",
+    "url": null,
+    "payload": {},
+    "created_at": null,
+    "updated_at": null
+  },
+  {
+    "id": "conn_stripe_01",
+    "tenant_id": "tenant_test",
+    "entity_type": "connection",
+    "title": "Stripe Billing Gateway",
+    "description": "Payment processor for customer checkouts",
+    "tags": [
+      "payment",
+      "billing"
+    ],
+    "status": "HEALTHY",
+    "url": null,
+    "payload": {},
+    "created_at": null,
+    "updated_at": null
+  },
+  {
+    "id": "RUN-92831",
+    "tenant_id": "tenant_test",
+    "entity_type": "run",
+    "title": "Order Processing Execution #92831",
+    "description": "Completed in 412ms without errors",
+    "tags": [
+      "order",
+      "webhook"
+    ],
+    "status": "COMPLETED",
+    "url": null,
+    "payload": {},
+    "created_at": "2026-09-24T11:58:30.159364+00:00",
+    "updated_at": null
+  }
+]

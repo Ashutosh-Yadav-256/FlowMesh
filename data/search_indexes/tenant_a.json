@@ -1,0 +1,15 @@
+[
+  {
+    "id": "wf_01",
+    "tenant_id": "tenant_a",
+    "entity_type": "workflow",
+    "title": "Order Ingestion Workflow",
+    "description": "",
+    "tags": [],
+    "status": null,
+    "url": null,
+    "payload": {},
+    "created_at": null,
+    "updated_at": null
+  }
+]

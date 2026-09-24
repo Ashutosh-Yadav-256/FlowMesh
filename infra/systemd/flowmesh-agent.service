@@ -1,0 +1,34 @@
+[Unit]
+Description=FlowMesh Edge Agent Daemon
+Documentation=https://github.com/flowmesh/flowmesh
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=flowmesh
+Group=flowmesh
+WorkingDirectory=/var/lib/flowmesh-agent
+ExecStart=/usr/local/bin/flowmesh-agent \
+  --config /etc/flowmesh/agent.yaml \
+  --buffer-path /var/lib/flowmesh-agent/queue.db
+
+# Sandboxing and security boundaries
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/flowmesh-agent
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+# Resilience and crash recovery
+Restart=always
+RestartSec=5s
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

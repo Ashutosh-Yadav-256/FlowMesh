@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: flowmesh
+  labels:
+    app.kubernetes.io/part-of: flowmesh
+    app.kubernetes.io/managed-by: flowmesh-operator

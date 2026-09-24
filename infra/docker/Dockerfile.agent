@@ -1,0 +1,23 @@
+FROM golang:1.23-alpine as builder
+
+WORKDIR /src
+
+RUN apk add --no-cache git ca-certificates
+
+COPY apps/agent/go.mod apps/agent/go.sum* ./
+RUN go mod download || true
+
+COPY apps/agent ./
+
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /bin/flowmesh-agent ./cmd/flowmesh-agent
+
+FROM alpine:3.20 as runner
+
+RUN apk add --no-cache ca-certificates tzdata
+
+COPY --from=builder /bin/flowmesh-agent /usr/local/bin/flowmesh-agent
+COPY apps/agent/config/config.yaml /etc/flowmesh/config.yaml
+
+VOLUME ["/etc/flowmesh", "/var/lib/flowmesh"]
+
+ENTRYPOINT ["/usr/local/bin/flowmesh-agent"]

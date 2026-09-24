@@ -1,0 +1,78 @@
+---
+- name: Provision FlowMesh Linux Edge Agent
+  hosts: edge_nodes
+  become: yes
+  vars:
+    agent_version: "2.4.0"
+    control_plane_url: "https://api.flowmesh.enterprise.internal"
+    enrollment_secret: "{{ vault_enrollment_secret }}"
+    agent_install_dir: "/opt/flowmesh"
+    agent_user: "flowmesh"
+
+  tasks:
+    - name: Create flowmesh service user and group
+      user:
+        name: "{{ agent_user }}"
+        system: yes
+        shell: /usr/sbin/nologin
+        create_home: no
+
+    - name: Create directories for binary and local SQLite spool
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ agent_user }}"
+        group: "{{ agent_user }}"
+        mode: '0750'
+      loop:
+        - "{{ agent_install_dir }}"
+        - "{{ agent_install_dir }}/bin"
+        - "/var/spool/flowmesh"
+
+    - name: Deploy FlowMesh Agent Static Go Daemon binary
+      copy:
+        src: "../../apps/agent/bin/flowmesh-agent"
+        dest: "{{ agent_install_dir }}/bin/flowmesh-agent"
+        owner: "{{ agent_user }}"
+        group: "{{ agent_user }}"
+        mode: '0755'
+
+    - name: Deploy FlowMesh Edge Configuration
+      template:
+        src: "templates/agent-config.yaml.j2"
+        dest: "{{ agent_install_dir }}/agent-config.yaml"
+        owner: "{{ agent_user }}"
+        group: "{{ agent_user }}"
+        mode: '0600'
+
+    - name: Configure Linux systemd service unit
+      copy:
+        dest: "/etc/systemd/system/flowmesh-agent.service"
+        content: |
+          [Unit]
+          Description=FlowMesh Zero-Trust Outbound Edge Agent
+          After=network.target network-online.target
+          Wants=network-online.target
+
+          [Service]
+          Type=simple
+          User={{ agent_user }}
+          Group={{ agent_user }}
+          WorkingDirectory={{ agent_install_dir }}
+          ExecStart={{ agent_install_dir }}/bin/flowmesh-agent --config {{ agent_install_dir }}/agent-config.yaml
+          Restart=always
+          RestartSec=5s
+          LimitNOFILE=65536
+          MemoryMax=512M
+          CPUQuota=50%
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+
+    - name: Reload systemd daemon and enable service
+      systemd:
+        name: flowmesh-agent
+        daemon_reload: yes
+        state: started
+        enabled: yes

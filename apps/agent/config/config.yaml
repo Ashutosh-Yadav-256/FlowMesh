@@ -1,0 +1,39 @@
+agent:
+  id: production-01
+  tenant_id: tenant_acme
+  version: v0.4.2
+
+control_plane:
+  endpoint: https://flowmesh.example.com
+  ws_endpoint: wss://flowmesh.example.com/api/v1/agents/ws
+  heartbeat_interval_seconds: 5
+
+security:
+  certificate: /etc/flowmesh/certs/agent.crt
+  key: /etc/flowmesh/certs/agent.key
+  ca: /etc/flowmesh/certs/ca.crt
+  signature_verification: true
+
+queue:
+  backend: sqlite
+  path: /var/lib/flowmesh/queue.db
+  max_size_mb: 500
+
+connectors:
+  postgres:
+    enabled: true
+    allow_queries: true
+    max_query_limit: 1000
+
+  rest:
+    enabled: true
+    allowed_domains:
+      - internal-warehouse.corp.local
+      - erp.corp.local
+
+  sftp:
+    enabled: true
+
+telemetry:
+  enabled: true
+  metrics_port: 9091

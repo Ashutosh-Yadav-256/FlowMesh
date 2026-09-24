@@ -1,0 +1,68 @@
+# ==============================================================================
+# FlowMesh Enterprise Worker - Production JVM & Garbage Collection Options
+# Supports: OpenJDK 17 LTS & OpenJDK 21 LTS
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Heap Memory Sizing
+# ------------------------------------------------------------------------------
+# Allocate identical initial and maximum heap to eliminate dynamic resizing pauses
+-Xms4g
+-Xmx4g
+
+# Metaspace Sizing (Class Metadata in Native Memory)
+-XX:MetaspaceSize=256m
+-XX:MaxMetaspaceSize=512m
+
+# Off-Heap Direct Memory Cap (Netty / Kafka NIO Buffers)
+-XX:MaxDirectMemorySize=1g
+
+# Thread Stack Size (Default 1MB per platform thread)
+-Xss1m
+
+# ------------------------------------------------------------------------------
+# 2. Garbage Collector Profile A: Production G1GC (Predictable Latency & Throughput)
+# Target: <200ms max pause time for batch transactions
+# ------------------------------------------------------------------------------
+-XX:+UseG1GC
+-XX:MaxGCPauseMillis=200
+-XX:InitiatingHeapOccupancyPercent=45
+-XX:G1ReservePercent=15
+-XX:G1HeapRegionSize=16m
+-XX:G1MixedGCCountTarget=8
+-XX:+ParallelRefProcEnabled
+
+# ------------------------------------------------------------------------------
+# 2B. Alternative Profile B: Generational ZGC (Ultra-Low Latency < 1ms, Java 21+)
+# Uncomment below and comment out G1GC section if sub-millisecond SLA is required
+# ------------------------------------------------------------------------------
+# -XX:+UseZGC
+# -XX:+ZGenerational
+
+# ------------------------------------------------------------------------------
+# 3. Crash Diagnostics & Memory Leak Protection (OutOfMemoryError Handling)
+# ------------------------------------------------------------------------------
+# Capture deterministic heap snapshot upon memory exhaustion for root cause analysis
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:HeapDumpPath=/var/log/flowmesh/dumps/flowmesh-worker-oom.hprof
+
+# Terminate process cleanly to allow container orchestrator (K8s/Docker) to restart pod
+-XX:+ExitOnOutOfMemoryError
+
+# ------------------------------------------------------------------------------
+# 4. Unified JVM GC Logging (JEP 158)
+# ------------------------------------------------------------------------------
+-Xlog:gc*,gc+phases=debug,gc+safepoint=debug:file=/var/log/flowmesh/gc-%t.log:time,uptime,pid:filecount=5,filesize=50M
+
+# ------------------------------------------------------------------------------
+# 5. Native Memory Tracking (NMT)
+# ------------------------------------------------------------------------------
+-XX:NativeMemoryTracking=summary
+
+# ------------------------------------------------------------------------------
+# 6. Performance & String De-duplication
+# ------------------------------------------------------------------------------
+-XX:+UseStringDeduplication
+-XX:+OptimizeStringConcat
+-Djava.awt.headless=true
+-Dfile.encoding=UTF-8
