@@ -78,3 +78,6 @@ obj/
 # TypeScript build info
 *.tsbuildinfo
 
+# Agent Customizations
+.agents/
+
