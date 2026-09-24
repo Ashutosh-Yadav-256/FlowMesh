@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import List, Any, Union
 import json
 from pydantic import model_validator, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24
 
-    allowed_origins: List[str] = [
+    allowed_origins: Union[List[str], str] = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:8000",
@@ -49,8 +49,8 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in v.split(",") if origin.strip()]
         return v
 
-    allowed_methods: List[str] = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-    allowed_headers: List[str] = ["Authorization", "Content-Type", "X-Tenant-ID", "X-Request-ID"]
+    allowed_methods: Union[List[str], str] = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    allowed_headers: Union[List[str], str] = ["Authorization", "Content-Type", "X-Tenant-ID", "X-Request-ID"]
     allow_credentials: bool = True
 
     database_url: str = "sqlite+aiosqlite:///./flowmesh.db"
