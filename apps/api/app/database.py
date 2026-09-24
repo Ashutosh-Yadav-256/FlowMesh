@@ -5,6 +5,11 @@ from sqlalchemy.pool import StaticPool
 from app.config import settings
 
 db_url = settings.database_url
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif db_url.startswith("postgresql://") and "+asyncpg" not in db_url:
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 if "postgresql" in db_url:
     try:
         import asyncpg  # noqa
