@@ -63,6 +63,24 @@ class ConnectorRegistry:
         except Exception:
             pass
 
+        try:
+            from connectors.ansible.connector import AnsibleConnector
+            self.register("ansible", AnsibleConnector())
+        except Exception:
+            pass
+
+        try:
+            from connectors.azure_automation.connector import AzureAutomationConnector
+            self.register("azure_automation", AzureAutomationConnector())
+        except Exception:
+            pass
+
+        try:
+            from connectors.power_platform.connector import PowerPlatformConnector
+            self.register("power_platform", PowerPlatformConnector())
+        except Exception:
+            pass
+
     def register(self, conn_type: str, connector: Connector) -> None:
         """Registers a connector implementation for a specific connection type."""
         self._connectors[conn_type.lower()] = connector

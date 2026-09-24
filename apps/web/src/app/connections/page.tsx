@@ -153,6 +153,39 @@ const fallbackConnections: ConnectionItem[] = [
     created_at: "2026-09-24",
     enabled: true,
   },
+  {
+    id: "conn_ansible_01",
+    name: "Ansible Automation Controller",
+    type: "ansible",
+    status: "healthy",
+    agent_id: "agent-prod-01",
+    config: { control_node: "ansible-ctrl.corp.acme.local", inventory: "production_inventory.yaml" },
+    last_tested_at: "Just now",
+    created_at: "2026-09-24",
+    enabled: true,
+  },
+  {
+    id: "conn_az_auto_01",
+    name: "Azure Automation Fleet",
+    type: "azure_automation",
+    status: "healthy",
+    agent_id: null,
+    config: { automation_account: "aa-flowmesh-prod", subscription_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890" },
+    last_tested_at: "Just now",
+    created_at: "2026-09-24",
+    enabled: true,
+  },
+  {
+    id: "conn_power_plat_01",
+    name: "Power Platform & Dataverse",
+    type: "power_platform",
+    status: "healthy",
+    agent_id: null,
+    config: { environment_url: "https://acmeprod.crm.dynamics.com", environment_id: "Default-98213840-acme" },
+    last_tested_at: "Just now",
+    created_at: "2026-09-24",
+    enabled: true,
+  },
 ];
 
 export default function ConnectionsPage() {
@@ -373,6 +406,24 @@ export default function ConnectionsPage() {
       setConnPort("22");
       setConnDatabase("/var/log/audit");
       setConnUser("devops");
+    } else if (typeId === "ansible") {
+      setConnName("Ansible Automation Controller");
+      setConnHost("ansible-ctrl.corp.acme.local");
+      setConnPort("443");
+      setConnDatabase("inventories/production.yaml");
+      setConnUser("ansible_service");
+    } else if (typeId === "azure_automation") {
+      setConnName("Azure Automation Account");
+      setConnHost("management.azure.com");
+      setConnPort("443");
+      setConnDatabase("aa-flowmesh-prod");
+      setConnUser("spn-flowmesh-automation-client");
+    } else if (typeId === "power_platform") {
+      setConnName("Microsoft Power Platform & Dataverse");
+      setConnHost("acmeprod.crm.dynamics.com");
+      setConnPort("443");
+      setConnDatabase("Default-98213840-acme");
+      setConnUser("power-platform-flowmesh-client");
     }
 
     setConnPassword("");
@@ -866,6 +917,9 @@ export default function ConnectionsPage() {
                             {conn.type === "active_directory" && <ShieldCheck className={`w-4 h-4 ${isEnabled ? "text-[#455CA1]" : "text-[#968676]"}`} />}
                             {conn.type === "windows_admin" && <Power className={`w-4 h-4 ${isEnabled ? "text-[#2E6B47]" : "text-[#968676]"}`} />}
                             {conn.type === "ssh" && <Lock className={`w-4 h-4 ${isEnabled ? "text-[#7A7165]" : "text-[#968676]"}`} />}
+                            {conn.type === "ansible" && <FileCode className={`w-4 h-4 ${isEnabled ? "text-[#874436]" : "text-[#968676]"}`} />}
+                            {conn.type === "azure_automation" && <RotateCw className={`w-4 h-4 ${isEnabled ? "text-[#455CA1]" : "text-[#968676]"}`} />}
+                            {conn.type === "power_platform" && <Network className={`w-4 h-4 ${isEnabled ? "text-[#2E6B47]" : "text-[#968676]"}`} />}
                           </span>
                           <div>
                             <div className="flex items-center gap-1.5">
@@ -1074,6 +1128,37 @@ export default function ConnectionsPage() {
                       { id: "active_directory", label: "Active Directory", icon: ShieldCheck, badge: "LDAPS / RBAC" },
                       { id: "windows_admin", label: "Windows / PowerShell", icon: Power, badge: "WinRM / Cmdlets" },
                       { id: "ssh", label: "Paramiko SSH/SFTP", icon: Lock, badge: "Paramiko Fleet" },
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      const isSelected = selectedType === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => handleSelectType(item.id)}
+                          className={`p-3 rounded-xl border text-left transition-all ${
+                            isSelected
+                              ? "bg-[#F8EBE8] border-[#874436] text-[#874436] shadow-sm ring-1 ring-[#874436]"
+                              : "bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300"
+                          }`}
+                        >
+                          <Icon className={`w-5 h-5 mb-1.5 ${isSelected ? "text-[#874436]" : "text-slate-500"}`} />
+                          <p className="font-bold text-xs text-slate-900">{item.label}</p>
+                          <span className="text-[10px] text-slate-500 font-mono">{item.badge}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                    Automation, Cloud &amp; AI Scripting (Ansible, Azure Automation, Power Platform)
+                  </p>
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {[
+                      { id: "ansible", label: "Ansible Controller", icon: FileCode, badge: "Playbooks / CLI" },
+                      { id: "azure_automation", label: "Azure Automation", icon: RotateCw, badge: "Runbooks / Hybrid" },
+                      { id: "power_platform", label: "Power Platform", icon: Network, badge: "Flows / Dataverse" },
                     ].map((item) => {
                       const Icon = item.icon;
                       const isSelected = selectedType === item.id;

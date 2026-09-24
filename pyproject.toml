@@ -46,7 +46,7 @@ target-version = "py312"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-pythonpath = ["apps/api", "packages", "packages/search-engine", "packages/auth", "packages/state-store", "packages/connector-sdk", "packages/workflow-schema", "packages/data-transform", "services", "services/workflow-engine", "services/event-router", "services/incident-manager", "connectors", "."]
+pythonpath = ["apps/api", "packages", "packages/ai-scripting", "packages/search-engine", "packages/auth", "packages/state-store", "packages/connector-sdk", "packages/workflow-schema", "packages/data-transform", "services", "services/workflow-engine", "services/event-router", "services/incident-manager", "connectors", "."]
 
 [tool.mypy]
 python_version = "3.12"

@@ -28,6 +28,7 @@ from app.routers import (
     webhooks,
     observability,
     assistant,
+    scripting,
     demo,
     search,
 )
@@ -105,6 +106,7 @@ def create_app() -> FastAPI:
     app.include_router(audit.router)
     app.include_router(webhooks.router)
     app.include_router(assistant.router)
+    app.include_router(scripting.router)
     app.include_router(demo.router)
     app.include_router(search.router)
 

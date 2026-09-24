@@ -45,6 +45,10 @@
     - [6.4.5 PyYAML Declarative DAG Serialization](#645-pyyaml-declarative-dag-serialization)
     - [6.4.6 FlowMesh Resilient HTTP Client](#646-flowmesh-resilient-http-client)
     - [6.4.7 High-Performance Pandas Vectorized DataFrame Engine](#647-high-performance-pandas-vectorized-dataframe-engine)
+    - [6.4.8 Ansible Automation Controller Integration](#648-ansible-automation-controller-integration)
+    - [6.4.9 Azure Automation & Hybrid Runbook Worker Engine](#649-azure-automation--hybrid-runbook-worker-engine)
+    - [6.4.10 Microsoft Power Platform & Dataverse Web API Engine](#6410-microsoft-power-platform--dataverse-web-api-engine)
+    - [6.4.11 AI-Assisted Scripting Engine & Static AST Guardrails](#6411-ai-assisted-scripting-engine--static-ast-guardrails)
 - [7. Messaging & Event Backbone (NATS JetStream)](#7-messaging--event-backbone-nats-jetstream)
   - [7.1 Stream Topologies & Consumer Groups](#71-stream-topologies--consumer-groups)
   - [7.2 CloudEvents 1.0 Serialization & Idempotent Deduplication](#72-cloudevents-10-serialization--idempotent-deduplication)
@@ -347,6 +351,36 @@ The `DataFrameEngine` (`packages/data-transform/flowmesh_transform/dataframe_eng
 - **IQR Anomaly Detection**: `detect_outliers_iqr` computes the interquartile range ($Q_1$, $Q_3$, $\text{IQR} = Q_3 - Q_1$) to flag numeric values outside $[Q_1 - 1.5 \times \text{IQR}, Q_3 + 1.5 \times \text{IQR}]$.
 - **Multi-Source Dataset Merges**: Joins datasets across disparate enterprise systems (e.g. merging PostgreSQL orders with SAP billing records) supporting `inner`, `left`, `right`, and `outer` join semantics.
 - **Multidimensional Aggregation & CSV Export**: Aggregates records by dimensions (`sum`, `mean`, `count`, `min`, `max`) and outputs standardized CSV payloads.
+
+#### 6.4.8 Ansible Automation Controller Integration
+The `AnsibleConnector` (`connectors/ansible/connector.py`) integrates with Ansible control nodes, AWX instances, and Ansible Automation Platform (AAP):
+- **Playbook Dispatch**: `run_playbook` executes playbooks with `extra_vars`, tag filtering, and `--check` dry-run mode, capturing task recaps (`ok`, `changed`, `failed`, `unreachable`).
+- **Ad-Hoc Collection Modules**: `execute_module` dispatches standalone collection modules (`ansible.builtin.service`, `ansible.windows.win_service`, etc.) across managed inventory patterns.
+- **Inventory Facts Discovery**: `get_facts` retrieves OS family, distribution version, memory, CPU, and network interface configurations for CMDB reconciliation.
+- **Static Syntax Check**: `check_syntax` runs pre-flight syntax linting on YAML playbooks without executing tasks on managed nodes.
+
+#### 6.4.9 Azure Automation & Hybrid Runbook Worker Engine
+The `AzureAutomationConnector` (`connectors/azure_automation/connector.py`) orchestrates Microsoft Azure Automation Accounts:
+- **Authentication**: Uses Azure Active Directory (Microsoft Entra ID) OAuth 2.0 Client Credentials with Azure Resource Manager (ARM) management scopes.
+- **Runbook Job Lifecycle**: `start_runbook` triggers PowerShell or Python runbooks with typed parameter payloads, supporting target execution on cloud workers or on-premise Hybrid Runbook Worker Groups.
+- **Job Polling & Telemetry**: `get_job_status` and `get_job_output` poll execution state (`Running`, `Completed`, `Failed`) and stream standard output and error buffers.
+- **Asset Introspection**: `list_runbooks` and `get_variable` inspect published automation assets and securely read account configuration variables.
+
+#### 6.4.10 Microsoft Power Platform & Dataverse Web API Engine
+The `PowerPlatformConnector` (`connectors/power_platform/connector.py`) integrates FlowMesh with Microsoft Power Platform and Common Data Service (Dataverse):
+- **Power Automate RPA & Cloud Flows**: `trigger_flow` dispatches events into automated cloud and desktop RPA workflows via HTTP triggers, and `get_flow_run` tracks execution progress and approval outputs.
+- **Dataverse OData v4 Integration**: `query_dataverse` executes structured OData queries with `$filter`, `$select`, and `$top` against enterprise business entities (accounts, contacts, custom solutions).
+- **Transactional Record Creation**: `create_dataverse_record` provisions new entity rows with strict schema validation and unique GUID return identifiers.
+
+#### 6.4.11 AI-Assisted Scripting Engine & Static AST Guardrails
+The `AiScriptingEngine` (`packages/ai-scripting/flowmesh_ai_scripting/engine.py`) and API router (`apps/api/app/routers/scripting.py`) provide enterprise-grade, guardrailed code synthesis:
+- **Multi-Language Support**: Synthesizes idiomatic automation scripts in PowerShell (`[CmdletBinding()]`, structured JSON piping), Bash (`set -euo pipefail`), Python (isolated functions with schema validation), SQL (transactional blocks), and Ansible playbooks.
+- **Static AST & Pattern Security Guardrails**: Evaluates generated or user-supplied code against rigorous destructive action rules:
+  - PowerShell: Flags `Format-Volume`, `Clear-Disk`, `Remove-Item -Recurse C:\`, and unconstrained active directory deletions.
+  - Bash: Flags `rm -rf /`, raw disk overwrites (`dd if=... of=/dev/sd*`), and unauthenticated curl pipes (`curl | bash`).
+  - SQL: Flags unconstrained `DROP DATABASE`, `TRUNCATE TABLE`, and `DELETE`/`UPDATE` statements lacking a `WHERE` clause.
+  - Python: Parses the Abstract Syntax Tree (AST) using Python's `ast` module to flag dangerous calls to `eval()`, `exec()`, and unconstrained subprocess execution.
+- **Automated Error Remediation**: Analyzes script execution stderr and stack traces, providing root cause diagnoses and repaired code blocks with inline diffs.
 
 ---
 

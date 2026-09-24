@@ -16,6 +16,9 @@ from connectors.servicenow.connector import ServiceNowConnector
 from connectors.active_directory.connector import ActiveDirectoryConnector
 from connectors.windows_admin.connector import WindowsAdminConnector
 from connectors.ssh.connector import SshParamikoConnector
+from connectors.ansible.connector import AnsibleConnector
+from connectors.azure_automation.connector import AzureAutomationConnector
+from connectors.power_platform.connector import PowerPlatformConnector
 
 __all__ = [
     "PostgresConnector",
@@ -31,6 +34,9 @@ __all__ = [
     "ActiveDirectoryConnector",
     "WindowsAdminConnector",
     "SshParamikoConnector",
+    "AnsibleConnector",
+    "AzureAutomationConnector",
+    "PowerPlatformConnector",
 ]
 
 

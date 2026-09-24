@@ -58,6 +58,7 @@
   - [7. Read-Only AI Incident Reasoning](#7-read-only-ai-incident-reasoning)
   - [8. Enterprise Systems Administration & Remote Fleet (ServiceNow, Active Directory, PowerShell, Paramiko)](#8-enterprise-systems-administration--remote-fleet)
   - [9. Distributed Cron Scheduling & Vectorized Data Analytics (PyYAML, Requests, Pandas)](#9-distributed-cron-scheduling--vectorized-data-analytics)
+  - [10. Enterprise Cloud Orchestration & AI-Assisted Scripting (Ansible, Azure Automation, Power Platform, AI Guardrails)](#10-enterprise-cloud-orchestration--ai-assisted-scripting)
 - [Distributed Observability & Telemetry](#-distributed-observability--telemetry)
 - [API Gateway Reference](#-api-gateway-reference)
 - [Architecture Decision Records (ADRs)](#-architecture-decision-records-adrs)
@@ -457,6 +458,13 @@ FlowMesh provides a hardened, unified interface for legacy on-premise infrastruc
 - **PyYAML Workflow DAG Serialization (`packages/workflow-schema/flowmesh_workflow/yaml_parser.py`)**: `YamlWorkflowParser` provides safe loading (`yaml.safe_load`), validation against strict Pydantic workflow schemas, syntax error diagnostics, and lossless round-trip serialization between YAML files and the Web DAG Studio.
 - **Resilient Requests HTTP Client (`packages/connector-sdk/flowmesh_connector/http_client.py`)**: `FlowMeshHttpClient` encapsulates `requests.Session` with connection pooling (`pool_connections`, `pool_maxsize`), automatic retry adapters with exponential backoff and jitter (`urllib3.util.Retry`), and pluggable authentication providers (Bearer, Basic, API Key).
 - **Pandas Vectorized Data Transformation Engine (`packages/data-transform/flowmesh_transform/dataframe_engine.py`)**: `DataFrameEngine` delivers high-performance in-memory ETL: vectorized transformations, statistical profiling (`statistical_summary`), interquartile range anomaly detection (`detect_outliers_iqr`), multi-source dataset merges (inner, left, right, outer joins), multidimensional aggregations (`aggregate_by_dimension`), and CSV export capabilities.
+
+### 10. Enterprise Cloud Orchestration & AI-Assisted Scripting
+FlowMesh expands its enterprise execution boundary into hybrid cloud, configuration management, and guardrailed generative automation:
+- **Ansible Automation Controller (`connectors/ansible`)**: Native integration with Ansible control nodes, AWX, and Ansible Automation Platform (AAP). Supports declarative playbook dispatch (`run_playbook`), ad-hoc collection module execution (`execute_module`), inventory fact introspection (`get_facts`), and dry-run syntax verification (`check_syntax`) with structured `PLAY RECAP` telemetry.
+- **Azure Automation & Hybrid Runbook Workers (`connectors/azure_automation`)**: Cloud and on-premise execution across Azure Automation Accounts via Microsoft Entra ID (Azure AD) OAuth 2.0 service principals. Manages PowerShell and Python runbooks (`start_runbook`, `get_job_status`, `get_job_output`, `list_runbooks`), hybrid worker group routing, and encrypted variable assets (`get_variable`).
+- **Microsoft Power Platform & Dataverse (`connectors/power_platform`)**: Seamless bridge between FlowMesh distributed workflows and Microsoft Power Automate cloud/desktop RPA flows (`trigger_flow`, `get_flow_run`, `list_flows`) and Microsoft Dataverse (Common Data Service) OData v4 web API entities (`query_dataverse`, `create_dataverse_record`).
+- **AI-Assisted Scripting Engine & Guardrails (`packages/ai-scripting`, `apps/api/app/routers/scripting.py`)**: Multi-language code synthesis and automated remediation for PowerShell, Bash, Python, SQL, and Ansible. Features strict static AST security guardrails that detect and reject high-risk operations (unbounded `DELETE`/`UPDATE`, destructive disk formatting, recursive root directory deletions, `eval`/`exec` injection), line-by-line code explanation, and automated error diagnostics.
 
 
 ---

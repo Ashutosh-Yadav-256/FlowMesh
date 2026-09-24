@@ -133,6 +133,10 @@ export default function WorkflowsPage() {
     { type: "trigger.cron", label: "Scheduled Cron Job", badge: "Schedule", icon: Clock, detail: "5-part cron (e.g. 0 2 * * *) or interval timer" },
     { type: "trigger.webhook", label: "Webhook Ingress", badge: "Trigger", icon: Globe, detail: "Ingest HTTP webhook" },
     { type: "trigger.event", label: "Event Ingress", badge: "Trigger", icon: Radio, detail: "Subscribe to event topic" },
+    { type: "action.ansible", label: "Ansible Playbook", badge: "Ansible", icon: FileCode, detail: "Execute playbook or run ad-hoc module", conn: "conn_ansible_01" },
+    { type: "action.azure_automation", label: "Azure Automation", badge: "Azure", icon: RotateCcw, detail: "Trigger runbook or hybrid worker job", conn: "conn_az_auto_01" },
+    { type: "action.power_platform", label: "Power Platform Flow", badge: "PowerPlatform", icon: Workflow, detail: "Trigger cloud flow or query Dataverse", conn: "conn_power_plat_01" },
+    { type: "action.ai_script", label: "AI Script Synthesis", badge: "AI Scripting", icon: Sparkles, detail: "Guardrailed multi-language code generation" },
     { type: "action.servicenow", label: "ServiceNow ITSM", badge: "ITSM", icon: Globe, detail: "Create incident or change request", conn: "conn_snow_01" },
     { type: "action.active_directory", label: "Active Directory", badge: "Identity", icon: UserCheck, detail: "Provision/disable user or group audit", conn: "conn_ad_01" },
     { type: "action.powershell", label: "PowerShell Cmdlet", badge: "Script", icon: FileCode, detail: "Execute cmdlet or restart Windows service", conn: "conn_win_01" },
@@ -368,7 +372,7 @@ export default function WorkflowsPage() {
                 <Layers className="w-3.5 h-3.5 text-[#874436]" />
                 Node Library
               </span>
-              <span className="text-[10px] text-[#968676] font-mono">11 types</span>
+              <span className="text-[10px] text-[#968676] font-mono">{nodePalette.length} components</span>
             </div>
 
             <p className="text-[11px] text-[#4F4F4F] leading-relaxed">Click any component to append it directly to the DAG pipeline:</p>
