@@ -4,6 +4,8 @@ import uvicorn
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "apps" / "api"))
+sys.path.insert(0, str(ROOT / "packages" / "ai-scripting"))
+sys.path.insert(0, str(ROOT / "packages" / "data-transform"))
 sys.path.insert(0, str(ROOT / "packages" / "auth"))
 sys.path.insert(0, str(ROOT / "packages" / "workflow-schema"))
 sys.path.insert(0, str(ROOT / "packages" / "state-store"))

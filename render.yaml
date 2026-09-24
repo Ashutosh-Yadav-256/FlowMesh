@@ -23,6 +23,8 @@ services:
         generateValue: true
       - key: ALLOWED_ORIGINS
         value: '["*"]'
+      - key: PYTHONPATH
+        value: "/app/apps/api:/app/packages/ai-scripting:/app/packages/data-transform:/app/packages/auth:/app/packages/workflow-schema:/app/packages/state-store:/app/packages/connector-sdk:/app/packages/search-engine:/app/services/workflow-engine:/app/services/event-router:/app/services/incident-manager:/app/connectors:/app/packages:/app/services:/app"
 
   - type: web
     name: flowmesh-web

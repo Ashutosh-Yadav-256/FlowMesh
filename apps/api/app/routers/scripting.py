@@ -9,14 +9,31 @@ from pydantic import BaseModel, Field
 
 from app.dependencies import CurrentAuth
 from flowmesh_auth.rbac import is_allowed
-from flowmesh_ai_scripting.engine import (
-    ai_scripting_engine,
-    ScriptGenerationRequest,
-    ScriptGenerationResult,
-    ScriptValidationResult,
-    ScriptExplanationResult,
-    ScriptLanguage,
-)
+try:
+    from flowmesh_ai_scripting.engine import (
+        ai_scripting_engine,
+        ScriptGenerationRequest,
+        ScriptGenerationResult,
+        ScriptValidationResult,
+        ScriptExplanationResult,
+        ScriptLanguage,
+    )
+except ModuleNotFoundError:
+    import sys
+    from pathlib import Path
+    for _parent in Path(__file__).resolve().parents:
+        _pkg_path = _parent / "packages" / "ai-scripting"
+        if _pkg_path.is_dir() and str(_pkg_path) not in sys.path:
+            sys.path.insert(0, str(_pkg_path))
+            break
+    from flowmesh_ai_scripting.engine import (
+        ai_scripting_engine,
+        ScriptGenerationRequest,
+        ScriptGenerationResult,
+        ScriptValidationResult,
+        ScriptExplanationResult,
+        ScriptLanguage,
+    )
 
 router = APIRouter(prefix="/api/v1/scripting", tags=["AI-Assisted Scripting"])
 
