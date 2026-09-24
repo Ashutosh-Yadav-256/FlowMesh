@@ -52,6 +52,7 @@ jobs:
           pnpm test:cov || true
 
       - name: SonarQube Scan
+        if: ${{ secrets.SONAR_TOKEN != '' }}
         uses: SonarSource/sonarqube-scan-action@v4
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -60,6 +61,7 @@ jobs:
           projectBaseDir: .
 
       - name: SonarQube Quality Gate Check
+        if: ${{ secrets.SONAR_TOKEN != '' }}
         uses: SonarSource/sonarqube-quality-gate-action@v1.1.0
         timeout-minutes: 5
         env:
