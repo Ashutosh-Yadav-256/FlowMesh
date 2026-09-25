@@ -271,10 +271,10 @@ export default function EnterpriseConsolePage() {
             Refresh
           </button>
           <a
-            href="http://localhost:8082/legacy-ajax-demo/index.html"
+            href="/legacy-ajax-demo/index.html"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-sky-600 text-white hover:bg-sky-700 transition"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-sky-600 text-white hover:bg-sky-700 transition shadow-xs"
           >
             <ExternalLink className="w-4 h-4" />
             Launch Legacy AJAX Console
@@ -923,7 +923,7 @@ export default function EnterpriseConsolePage() {
               </p>
             </div>
             <a
-              href="http://localhost:8082/legacy-ajax-demo/index.html"
+              href="/legacy-ajax-demo/index.html"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 text-white rounded text-xs font-medium hover:bg-sky-700 transition"
@@ -935,7 +935,7 @@ export default function EnterpriseConsolePage() {
 
           <div className="border border-slate-200 dark:border-slate-800 rounded overflow-hidden h-[600px] bg-slate-900">
             <iframe
-              src="http://localhost:8082/legacy-ajax-demo/index.html"
+              src="/legacy-ajax-demo/index.html"
               className="w-full h-full border-none"
               title="Legacy AJAX Console"
             />

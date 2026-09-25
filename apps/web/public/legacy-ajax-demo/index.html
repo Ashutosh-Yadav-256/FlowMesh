@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlowMesh Enterprise Worker - Legacy AJAX Administration Console</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Top Legacy Banner Bar -->
+    <header id="legacy-header">
+        <div class="header-left">
+            <span class="logo-symbol">&#9670;</span>
+            <span class="logo-title">FlowMesh Enterprise Worker</span>
+            <span class="logo-sub">[v2.4.0-RELEASE]</span>
+        </div>
+        <div class="header-center">
+            <span class="badge badge-tomcat">Apache Tomcat 10.1 (Embedded / External)</span>
+            <span class="badge badge-jmx" id="jmx-status-badge">JMX: ACTIVE</span>
+            <span class="badge badge-online" id="server-status-badge">ONLINE</span>
+        </div>
+        <div class="header-right">
+            <label for="poll-toggle">Auto-Poll (3s):</label>
+            <input type="checkbox" id="poll-toggle" checked>
+            <button id="btn-manual-refresh" class="btn-sm" onclick="pollAllTelemetry()">&#x21bb; Refresh Now</button>
+        </div>
+    </header>
+
+    <!-- Subtitle Breadcrumb -->
+    <div id="sub-bar">
+        <span>Administration Console &gt; Polyglot Adapters &gt; Legacy AJAX (XMLHttpRequest Level 2) Demo</span>
+        <span id="current-timestamp">Ready</span>
+    </div>
+
+    <!-- Main Navigation Tabs -->
+    <nav id="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('tab-db')">1. Database Adapters (PG / Oracle / MSSQL)</button>
+        <button class="tab-btn" onclick="switchTab('tab-messaging')">2. Messaging (RabbitMQ &amp; JMS)</button>
+        <button class="tab-btn" onclick="switchTab('tab-redis')">3. Redis Cache &amp; Distributed Locks</button>
+        <button class="tab-btn" onclick="switchTab('tab-jmx')">4. JMX Monitoring &amp; MBeans</button>
+        <button class="tab-btn" onclick="switchTab('tab-deployment')">5. Deployment Architecture</button>
+    </nav>
+
+    <!-- Content Sections -->
+    <main id="tab-container">
+        <!-- TAB 1: Database Adapters -->
+        <section id="tab-db" class="tab-pane active">
+            <div class="pane-header">
+                <h2>Enterprise Database Adapters (JDBC / HikariCP / Dialects)</h2>
+                <div class="actions">
+                    <button class="btn" onclick="testAllDatabases()">&#x2713; Ping All Adapters</button>
+                </div>
+            </div>
+
+            <div class="card-grid">
+                <!-- PostgreSQL -->
+                <div class="card db-card" id="card-postgres">
+                    <div class="card-title">
+                        <span class="status-dot dot-green"></span>
+                        <strong>PostgreSQL 16</strong>
+                        <span class="tag">Primary Store</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="meta">Dialect: <code>PostgreSQLDialect</code></p>
+                        <p class="meta">Pool: <span id="pg-pool-info">HikariCP (Max 20, Idle 5)</span></p>
+                        <p class="meta">Latency: <span id="pg-latency" class="highlight">-- ms</span></p>
+                        <div class="btn-group">
+                            <button class="btn-sm" onclick="testDbConnection('POSTGRESQL')">Test Connection</button>
+                            <button class="btn-sm" onclick="introspectDb('POSTGRESQL', 'public')">View Tables</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Oracle -->
+                <div class="card db-card" id="card-oracle">
+                    <div class="card-title">
+                        <span class="status-dot dot-orange"></span>
+                        <strong>Oracle Database 23ai</strong>
+                        <span class="tag">ERP Ledger</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="meta">Dialect: <code>OracleDialect (Dual / Pagination)</code></p>
+                        <p class="meta">Pool: <span id="orcl-pool-info">OracleUCP (Max 32)</span></p>
+                        <p class="meta">Latency: <span id="orcl-latency" class="highlight">-- ms</span></p>
+                        <div class="btn-group">
+                            <button class="btn-sm" onclick="testDbConnection('ORACLE')">Test Connection</button>
+                            <button class="btn-sm" onclick="introspectDb('ORACLE', 'FLOWMESH_ORCL')">View Tables</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Microsoft SQL Server -->
+                <div class="card db-card" id="card-sqlserver">
+                    <div class="card-title">
+                        <span class="status-dot dot-blue"></span>
+                        <strong>SQL Server 2022</strong>
+                        <span class="tag">Audit &amp; Identity</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="meta">Dialect: <code>SQLServerDialect (T-SQL / TOP)</code></p>
+                        <p class="meta">Pool: <span id="mssql-pool-info">MSSQL-Pool (Max 25)</span></p>
+                        <p class="meta">Latency: <span id="mssql-latency" class="highlight">-- ms</span></p>
+                        <div class="btn-group">
+                            <button class="btn-sm" onclick="testDbConnection('SQL_SERVER')">Test Connection</button>
+                            <button class="btn-sm" onclick="introspectDb('SQL_SERVER', 'dbo')">View Tables</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Query Box -->
+            <div class="console-box">
+                <div class="console-header">
+                    <span>Interactive SQL Console (Routed through Spring Boot Database Adapters)</span>
+                    <select id="query-adapter-select">
+                        <option value="POSTGRESQL">PostgreSQL</option>
+                        <option value="ORACLE">Oracle (23ai)</option>
+                        <option value="SQL_SERVER">Microsoft SQL Server</option>
+                    </select>
+                </div>
+                <div class="console-input-row">
+                    <textarea id="sql-query-input" rows="3" placeholder="Enter SQL query (e.g. SELECT 1 AS ping, CURRENT_TIMESTAMP AS now_time)"></textarea>
+                    <button class="btn btn-primary" onclick="executeCustomQuery()">Execute via AJAX &gt;</button>
+                </div>
+                <div id="query-result-table-container"></div>
+            </div>
+        </section>
+
+        <!-- TAB 2: Messaging -->
+        <section id="tab-messaging" class="tab-pane">
+            <div class="pane-header">
+                <h2>Enterprise Messaging: RabbitMQ (AMQP) &amp; JMS (Jakarta / ActiveMQ Artemis)</h2>
+                <button class="btn" onclick="refreshMessagingStatus()">&#x21bb; Query Queues</button>
+            </div>
+
+            <div class="card-grid">
+                <!-- RabbitMQ Card -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="status-dot dot-green"></span>
+                        <strong>RabbitMQ 3.13 (AMQP 0-9-1)</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="meta">Exchange: <code>flowmesh.direct</code></p>
+                        <p class="meta">Queue: <code>flowmesh.transactions.queue</code></p>
+                        <p class="meta">DLQ: <code>flowmesh.dlq</code> (Dead-Letter Exchange)</p>
+                        <p class="meta">Dispatches: <span id="rabbit-count" class="highlight">0</span></p>
+                        <hr>
+                        <div class="form-row">
+                            <input type="text" id="rabbit-msg-input" placeholder="Payload string" value="Invoice #8821 payment notification">
+                            <button class="btn-sm" onclick="publishRabbitMessage()">Publish to RabbitMQ</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- JMS Card -->
+                <div class="card">
+                    <div class="card-title">
+                        <span class="status-dot dot-blue"></span>
+                        <strong>Jakarta JMS 3.1 (ActiveMQ Artemis)</strong>
+                    </div>
+                    <div class="card-body">
+                        <p class="meta">Engine: <code>Embedded / External Artemis Broker</code></p>
+                        <p class="meta">Queue (P2P): <code>flowmesh.jms.queue</code></p>
+                        <p class="meta">Topic (Pub/Sub): <code>flowmesh.jms.topic</code></p>
+                        <p class="meta">Messages Sent: <span id="jms-count" class="highlight">0</span></p>
+                        <hr>
+                        <div class="form-row">
+                            <input type="text" id="jms-msg-input" placeholder="JMS payload" value="ERP GL Batch Post request">
+                            <button class="btn-sm" onclick="sendJmsQueueMessage()">Send P2P Queue</button>
+                            <button class="btn-sm" onclick="publishJmsTopicMessage()">Publish Topic</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="console-box">
+                <div class="console-header">Recent Messages Stream (Real-Time Buffer)</div>
+                <div id="messaging-log-stream" class="log-stream">No messages yet. Dispatch via the buttons above.</div>
+            </div>
+        </section>
+
+        <!-- TAB 3: Redis Cache & Distributed Locks -->
+        <section id="tab-redis" class="tab-pane">
+            <div class="pane-header">
+                <h2>Redis 7 In-Memory Cache &amp; Distributed Lease Manager</h2>
+                <button class="btn" onclick="refreshRedisStats()">&#x21bb; Inspect Cache</button>
+            </div>
+
+            <div class="metrics-row">
+                <div class="metric-box">
+                    <span class="metric-label">Cache Hit Ratio</span>
+                    <span class="metric-value highlight" id="redis-hit-ratio">--</span>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">Hit Count</span>
+                    <span class="metric-value" id="redis-hits">0</span>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">Miss Count</span>
+                    <span class="metric-value" id="redis-misses">0</span>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">Active Keys</span>
+                    <span class="metric-value" id="redis-total-keys">0</span>
+                </div>
+            </div>
+
+            <div class="card-grid">
+                <div class="card">
+                    <div class="card-title"><strong>Store Key / Value in Redis</strong></div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Key Name:</label>
+                            <input type="text" id="cache-key-input" placeholder="e.g. tenant:tenant_acme:policy" value="tenant:tenant_acme:policy">
+                        </div>
+                        <div class="form-group">
+                            <label>Value:</label>
+                            <input type="text" id="cache-val-input" placeholder="JSON or String value" value='{"require_2fa": true, "max_concurrency": 25}'>
+                        </div>
+                        <div class="form-group">
+                            <label>TTL (seconds):</label>
+                            <input type="number" id="cache-ttl-input" value="600">
+                        </div>
+                        <button class="btn" onclick="putCacheKey()">Put to Redis</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><strong>Distributed Multi-Tenant Locking</strong></div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Tenant ID:</label>
+                            <input type="text" id="lock-tenant-input" value="tenant_acme">
+                        </div>
+                        <div class="form-group">
+                            <label>Resource Name:</label>
+                            <input type="text" id="lock-resource-input" value="ledger-reconciliation">
+                        </div>
+                        <div class="form-group">
+                            <label>Active Lock Token:</label>
+                            <input type="text" id="lock-token-display" readonly placeholder="No lock held">
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn-sm" onclick="acquireDistributedLock()">Acquire Lock (NX)</button>
+                            <button class="btn-sm btn-danger" onclick="releaseDistributedLock()">Release Lock</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="console-box">
+                <div class="console-header">Cached Keys Explorer</div>
+                <div id="cache-keys-list" class="tag-cloud"></div>
+            </div>
+        </section>
+
+        <!-- TAB 4: JMX Monitoring & MBeans -->
+        <section id="tab-jmx" class="tab-pane">
+            <div class="pane-header">
+                <h2>JMX (Java Management Extensions) MBean Telemetry &amp; Remote Operations</h2>
+                <button class="btn" onclick="pollJmxAttributes()">&#x21bb; Poll JMX</button>
+            </div>
+
+            <div class="card-grid">
+                <div class="card">
+                    <div class="card-title">
+                        <strong>MBean: <code>io.flowmesh:type=WorkerMonitor,name=CoreMonitor</code></strong>
+                    </div>
+                    <div class="card-body">
+                        <table class="data-table" id="jmx-attr-table">
+                            <thead>
+                                <tr><th>Managed Attribute</th><th>Live MBean Value</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>DeploymentMode</td><td id="jmx-deploy-mode">--</td></tr>
+                                <tr><td>JvmUptime</td><td id="jmx-uptime">--</td></tr>
+                                <tr><td>ActiveTenantCount</td><td id="jmx-tenants">--</td></tr>
+                                <tr><td>ProcessedTransactions</td><td id="jmx-processed">--</td></tr>
+                                <tr><td>FailedTransactions</td><td id="jmx-failed">--</td></tr>
+                                <tr><td>AverageLatencyMs</td><td id="jmx-latency">--</td></tr>
+                                <tr><td>CacheHitRatio</td><td id="jmx-cache-ratio">--</td></tr>
+                                <tr><td>DatabaseActiveConnections</td><td id="jmx-db-conns">--</td></tr>
+                                <tr><td>RabbitMqDispatchedMessages</td><td id="jmx-rabbit-msgs">--</td></tr>
+                                <tr><td>JmsSentMessages</td><td id="jmx-jms-msgs">--</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><strong>Execute JMX Managed Operations</strong></div>
+                    <div class="card-body">
+                        <p class="meta">Invoke runtime control actions over JMX / MBeanServer:</p>
+                        <div class="op-button-list">
+                            <button class="btn" onclick="invokeJmxOp('runHealthCheck')">&#x2695; runHealthCheck()</button>
+                            <button class="btn" onclick="invokeJmxOp('triggerGarbageCollection')">&#x2672; triggerGarbageCollection() (System.gc())</button>
+                            <button class="btn" onclick="invokeJmxOp('evictAllCaches')">&#x274C; evictAllCaches()</button>
+                            <button class="btn" onclick="invokeJmxOp('resetCounters')">&#x21BA; resetCounters()</button>
+                        </div>
+                        <div id="jmx-op-result" class="op-result-box">No operation invoked yet.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: Deployment -->
+        <section id="tab-deployment" class="tab-pane">
+            <div class="pane-header">
+                <h2>Tomcat Deployment Architecture: Embedded vs. External Standalone WAR</h2>
+                <button class="btn" onclick="fetchDeploymentInfo()">&#x21bb; Query Runtime Info</button>
+            </div>
+
+            <div class="deployment-comparison">
+                <div class="deploy-col">
+                    <div class="deploy-badge badge-active">Active Runtime Mode: <span id="deploy-active-badge">--</span></div>
+                    <h3>Current JVM &amp; Servlet Environment</h3>
+                    <ul class="spec-list" id="deploy-spec-list">
+                        <li>Server Engine: <strong id="spec-engine">--</strong></li>
+                        <li>Servlet Specification: <strong id="spec-servlet">Jakarta Servlet 6.0</strong></li>
+                        <li>HTTP Connector Port: <strong id="spec-port">8082</strong></li>
+                        <li>Max Worker Threads: <strong id="spec-threads">200</strong></li>
+                        <li>Max Keep-Alive Connections: <strong id="spec-conns">8192</strong></li>
+                        <li>Java Runtime: <strong id="spec-java">--</strong></li>
+                        <li>Catalina Base: <strong id="spec-base">--</strong></li>
+                    </ul>
+                </div>
+
+                <div class="deploy-col">
+                    <h3>Deployment Matrix</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Feature</th><th>Embedded Tomcat</th><th>External Tomcat (WAR)</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Artifact</td><td>Self-executable Fat JAR</td><td><code>flowmesh-worker.war</code></td></tr>
+                            <tr><td>Servlet Spec</td><td>Jakarta Servlet 6.0 (Tomcat 10.1)</td><td>Jakarta Servlet 6.0 (Tomcat 10.1+)</td></tr>
+                            <tr><td>Packaging Profile</td><td><code>mvn package</code></td><td><code>mvn package -Pexternal-tomcat</code></td></tr>
+                            <tr><td>Datasource Wiring</td><td>Spring Boot HikariCP</td><td>Tomcat JNDI <code>Resource</code> / Context</td></tr>
+                            <tr><td>Boot Mechanism</td><td><code>EnterpriseWorkerApplication.main()</code></td><td><code>SpringBootServletInitializer</code></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Raw XMLHttpRequest Diagnostic Log Window -->
+    <footer id="legacy-footer">
+        <div class="log-header">
+            <strong>AJAX Communication Log (Raw XMLHttpRequest Level 2 Transcripts)</strong>
+            <button class="btn-xs" onclick="clearAjaxLog()">Clear Log</button>
+        </div>
+        <div id="ajax-log-output">Console initialized. Ready to execute asynchronous XMLHttpRequest calls.</div>
+    </footer>
+
+    <script src="legacy-ajax.js"></script>
+</body>
+</html>
