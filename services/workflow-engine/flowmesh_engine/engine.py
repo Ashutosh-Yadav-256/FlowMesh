@@ -788,6 +788,52 @@ class WorkflowEngine:
                 raise RuntimeError(res.error or "Database operation failed")
             return res.data or {}
 
+        elif node_type.startswith("action.aws"):
+            service_key = node_type.replace("action.", "")
+            aws_conn = get_connector(service_key) or get_connector("aws")
+            if not aws_conn:
+                raise RuntimeError(f"AWS connector for service '{service_key}' not found in registry")
+            spec = ConnectionSpec(
+                id=node.connection_id or f"conn_{service_key}_default",
+                tenant_id=self.tenant_id,
+                type=service_key,
+                name=f"AWS {service_key.upper()} Gateway",
+                config=resolved_config,
+            )
+            op_name = resolved_config.get("operation") or resolved_config.get("action", "execute")
+            op = Operation(
+                id=f"op_{uuid.uuid4().hex[:6]}",
+                name=op_name,
+                parameters=resolved_config,
+            )
+            res = await aws_conn.execute(spec, op)
+            if not res.success:
+                raise RuntimeError(res.error or f"AWS {service_key} operation '{op_name}' failed")
+            return res.data or {}
+
+        elif node_type in ("action.mysql", "action.mongodb", "action.mssql", "action.oracle", "action.datalake", "action.airflow"):
+            service_key = node_type.replace("action.", "")
+            db_conn = get_connector(service_key)
+            if not db_conn:
+                raise RuntimeError(f"Connector for '{service_key}' not found in registry")
+            spec = ConnectionSpec(
+                id=node.connection_id or f"conn_{service_key}_default",
+                tenant_id=self.tenant_id,
+                type=service_key,
+                name=f"{service_key.capitalize()} Gateway",
+                config=resolved_config,
+            )
+            op_name = resolved_config.get("operation") or resolved_config.get("action", "query")
+            op = Operation(
+                id=f"op_{uuid.uuid4().hex[:6]}",
+                name=op_name,
+                parameters=resolved_config,
+            )
+            res = await db_conn.execute(spec, op)
+            if not res.success:
+                raise RuntimeError(res.error or f"{service_key.capitalize()} operation '{op_name}' failed")
+            return res.data or {}
+
         elif node_type in ("control.condition", "control.validate"):
             schema_ref = resolved_config.get("schema_ref")
             is_valid = True

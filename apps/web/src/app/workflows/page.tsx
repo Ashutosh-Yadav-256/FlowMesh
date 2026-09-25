@@ -32,6 +32,10 @@ import {
   X,
   CheckCircle,
   AlertTriangle,
+  Cloud,
+  HardDrive,
+  Search,
+  Key,
 } from "lucide-react";
 
 interface NodeItem {
@@ -81,6 +85,8 @@ export default function WorkflowsPage() {
   const [deployChangelog, setDeployChangelog] = useState<string>("");
   const [selectedRollbackVer, setSelectedRollbackVer] = useState<number>(2);
   const [deploySuccessBanner, setDeploySuccessBanner] = useState<string | null>(null);
+  const [paletteCategory, setPaletteCategory] = useState<string>("all");
+  const [paletteSearch, setPaletteSearch] = useState<string>("");
 
   const [workflowId, setWorkflowId] = useState<string>("wf_order_processing");
 
@@ -149,28 +155,76 @@ export default function WorkflowsPage() {
   const isValid = validationErrors.length === 0;
 
   const nodePalette = [
-    { type: "trigger.cron", label: "Scheduled Cron Job", badge: "Schedule", icon: Clock, detail: "5-part cron (e.g. 0 2 * * *) or interval timer" },
-    { type: "trigger.webhook", label: "Webhook Ingress", badge: "Trigger", icon: Globe, detail: "Ingest HTTP webhook" },
-    { type: "trigger.event", label: "Event Ingress", badge: "Trigger", icon: Radio, detail: "Subscribe to event topic" },
-    { type: "action.ansible", label: "Ansible Playbook", badge: "Ansible", icon: FileCode, detail: "Execute playbook or run ad-hoc module", conn: "conn_ansible_01" },
-    { type: "action.azure_automation", label: "Azure Automation", badge: "Azure", icon: RotateCcw, detail: "Trigger runbook or hybrid worker job", conn: "conn_az_auto_01" },
-    { type: "action.power_platform", label: "Power Platform Flow", badge: "PowerPlatform", icon: Workflow, detail: "Trigger cloud flow or query Dataverse", conn: "conn_power_plat_01" },
-    { type: "action.ai_script", label: "AI Script Synthesis", badge: "AI Scripting", icon: Sparkles, detail: "Guardrailed multi-language code generation" },
-    { type: "action.servicenow", label: "ServiceNow ITSM", badge: "ITSM", icon: Globe, detail: "Create incident or change request", conn: "conn_snow_01" },
-    { type: "action.active_directory", label: "Active Directory", badge: "Identity", icon: UserCheck, detail: "Provision/disable user or group audit", conn: "conn_ad_01" },
-    { type: "action.powershell", label: "PowerShell Cmdlet", badge: "Script", icon: FileCode, detail: "Execute cmdlet or restart Windows service", conn: "conn_win_01" },
-    { type: "action.paramiko_ssh", label: "Paramiko SSH/SFTP", badge: "SSH", icon: Layers, detail: "Remote execution & secure file transfer", conn: "conn_ssh_01" },
-    { type: "transform.pandas", label: "Pandas Transform", badge: "Data", icon: Database, detail: "IQR outlier detection & dataframe merges" },
-    { type: "action.db_query", label: "Postgres Read", badge: "Database", icon: Database, detail: "SQL Query via Edge Agent", conn: "conn_pg_01" },
-    { type: "action.db_write", label: "Postgres Write", badge: "Database", icon: Database, detail: "SQL Insert/Update (ACID)", conn: "conn_pg_01" },
-    { type: "action.http", label: "REST Gateway", badge: "HTTP", icon: Globe, detail: "HTTP REST call (Retries x3)", conn: "conn_rest_01" },
-    { type: "action.approval", label: "Approval Gate", badge: "Human Gate", icon: UserCheck, detail: "Pauses run for operator review" },
-    { type: "control.parallel", label: "Parallel Lanes", badge: "Parallel", icon: GitBranch, detail: "Concurrent branch execution" },
-    { type: "control.delay", label: "Delay Cooldown", badge: "Delay", icon: Clock, detail: "Execution pause timer" },
-    { type: "action.event_publish", label: "Event Publish", badge: "Event", icon: Send, detail: "Emit NATS JetStream event" },
-    { type: "action.notification", label: "Slack / Teams", badge: "Notification", icon: Bell, detail: "Channel alert dispatch" },
-    { type: "audit.log", label: "Immutable Audit", badge: "Audit", icon: ShieldCheck, detail: "Tamper-evident audit trail" },
+    // AWS Cloud Services
+    { type: "action.aws_s3", label: "AWS S3 Storage", category: "aws", badge: "AWS S3", icon: UploadCloud, detail: "Put/get objects, upload blobs, list buckets", conn: "conn_aws_01", config: { operation: "put_object", bucket: "flowmesh-data-lake", key: "orders/{{input.order_id}}.json" } },
+    { type: "action.aws_sqs", label: "AWS SQS Queue", category: "aws", badge: "AWS SQS", icon: Radio, detail: "Enqueue, dequeue, acknowledge SQS messages", conn: "conn_aws_01", config: { operation: "send_message", queue_url: "https://sqs.us-east-1.amazonaws.com/123456789012/order-queue" } },
+    { type: "action.aws_sns", label: "AWS SNS Pub/Sub", category: "aws", badge: "AWS SNS", icon: Send, detail: "Broadcast push alerts, fan-out topic events", conn: "conn_aws_01", config: { operation: "publish", topic_arn: "arn:aws:sns:us-east-1:123456789012:flowmesh-alerts" } },
+    { type: "action.aws_lambda", label: "AWS Lambda Function", category: "aws", badge: "AWS Lambda", icon: Flame, detail: "Serverless compute invocation with payload", conn: "conn_aws_01", config: { operation: "invoke", function_name: "flowmesh-processor" } },
+    { type: "action.aws_dynamodb", label: "AWS DynamoDB NoSQL", category: "aws", badge: "AWS DynamoDB", icon: Database, detail: "Single-digit ms key-value & document ops", conn: "conn_aws_01", config: { operation: "get_item", table_name: "Orders" } },
+    { type: "action.aws_eventbridge", label: "AWS EventBridge Bus", category: "aws", badge: "AWS Events", icon: Globe, detail: "Emit events to enterprise AWS EventBridge bus", conn: "conn_aws_01", config: { operation: "put_events", event_bus_name: "default" } },
+    { type: "action.aws_secrets_manager", label: "AWS Secrets Manager", category: "aws", badge: "AWS Secrets", icon: Key, detail: "Retrieve rotated secrets & API credentials", conn: "conn_aws_01", config: { operation: "get_secret_value", secret_id: "prod/api/creds" } },
+    { type: "action.aws_step_functions", label: "AWS Step Functions", category: "aws", badge: "AWS StepFn", icon: GitBranch, detail: "Start & poll AWS State Machine executions", conn: "conn_aws_01", config: { operation: "start_execution", state_machine_arn: "arn:aws:states:us-east-1:..." } },
+    { type: "action.aws_cloudwatch", label: "AWS CloudWatch Logs", category: "aws", badge: "AWS CloudWatch", icon: ShieldCheck, detail: "Emit metrics & query CloudWatch logs", conn: "conn_aws_01", config: { operation: "put_metric_data", namespace: "FlowMesh/Engine" } },
+    { type: "action.aws_kms", label: "AWS KMS Encryption", category: "aws", badge: "AWS KMS", icon: ShieldCheck, detail: "Hardware HSM envelope encrypt & decrypt", conn: "conn_aws_01", config: { operation: "encrypt", key_id: "alias/flowmesh-key" } },
+    { type: "action.aws", label: "AWS Master Suite", category: "aws", badge: "AWS Suite", icon: Cloud, detail: "Unified SigV4 multi-service AWS client", conn: "conn_aws_01", config: { service: "s3", operation: "list_buckets" } },
+
+    // Triggers
+    { type: "trigger.cron", label: "Scheduled Cron Job", category: "triggers", badge: "Schedule", icon: Clock, detail: "5-part cron (e.g. 0 2 * * *) or interval timer" },
+    { type: "trigger.webhook", label: "Webhook Ingress", category: "triggers", badge: "Trigger", icon: Globe, detail: "Ingest HTTP webhook" },
+    { type: "trigger.event", label: "Event Ingress", category: "triggers", badge: "Trigger", icon: Radio, detail: "Subscribe to event topic" },
+
+    // Enterprise Databases
+    { type: "action.db_query", label: "Postgres Read", category: "databases", badge: "Database", icon: Database, detail: "SQL Query via Edge Agent", conn: "conn_pg_01" },
+    { type: "action.db_write", label: "Postgres Write", category: "databases", badge: "Database", icon: Database, detail: "SQL Insert/Update (ACID)", conn: "conn_pg_01" },
+    { type: "action.mysql", label: "MySQL Database", category: "databases", badge: "MySQL", icon: Database, detail: "Query or insert into MySQL / PlanetScale", conn: "conn_mysql_01", config: { sql: "SELECT * FROM orders WHERE status = 'pending'" } },
+    { type: "action.mongodb", label: "MongoDB NoSQL", category: "databases", badge: "MongoDB", icon: Database, detail: "Document find, insert, or aggregation", conn: "conn_mongo_01", config: { collection: "events", filter: {} } },
+    { type: "action.mssql", label: "MSSQL Server", category: "databases", badge: "MSSQL", icon: Database, detail: "Execute parameterized T-SQL procedures", conn: "conn_mssql_01", config: { sql: "SELECT TOP 50 * FROM Customers" } },
+    { type: "action.oracle", label: "Oracle Database", category: "databases", badge: "Oracle", icon: Database, detail: "Execute PL/SQL statements and batches", conn: "conn_oracle_01", config: { sql: "SELECT * FROM gl_journals WHERE ROWNUM <= 20" } },
+    { type: "action.datalake", label: "Data Lake Storage", category: "databases", badge: "DataLake", icon: HardDrive, detail: "Query Parquet & Iceberg object lakes", conn: "conn_datalake_01", config: { table: "orders_delta", limit: 100 } },
+
+    // Automation & Scripts
+    { type: "action.ansible", label: "Ansible Playbook", category: "automation", badge: "Ansible", icon: FileCode, detail: "Execute playbook or run ad-hoc module", conn: "conn_ansible_01" },
+    { type: "action.azure_automation", label: "Azure Automation", category: "automation", badge: "Azure", icon: RotateCcw, detail: "Trigger runbook or hybrid worker job", conn: "conn_az_auto_01" },
+    { type: "action.power_platform", label: "Power Platform Flow", category: "automation", badge: "PowerPlatform", icon: Workflow, detail: "Trigger cloud flow or query Dataverse", conn: "conn_power_plat_01" },
+    { type: "action.ai_script", label: "AI Script Synthesis", category: "automation", badge: "AI Scripting", icon: Sparkles, detail: "Guardrailed multi-language code generation" },
+    { type: "action.servicenow", label: "ServiceNow ITSM", category: "automation", badge: "ITSM", icon: Globe, detail: "Create incident or change request", conn: "conn_snow_01" },
+    { type: "action.active_directory", label: "Active Directory", category: "automation", badge: "Identity", icon: UserCheck, detail: "Provision/disable user or group audit", conn: "conn_ad_01" },
+    { type: "action.powershell", label: "PowerShell Cmdlet", category: "automation", badge: "Script", icon: FileCode, detail: "Execute cmdlet or restart Windows service", conn: "conn_win_01" },
+    { type: "action.paramiko_ssh", label: "Paramiko SSH/SFTP", category: "automation", badge: "SSH", icon: Layers, detail: "Remote execution & secure file transfer", conn: "conn_ssh_01" },
+    { type: "action.airflow", label: "Apache Airflow DAG", category: "automation", badge: "Airflow", icon: Workflow, detail: "Trigger or monitor Airflow DAG pipelines", conn: "conn_airflow_01" },
+
+    // Data Transform & HTTP
+    { type: "transform.pandas", label: "Pandas Transform", category: "data", badge: "Data", icon: Database, detail: "IQR outlier detection & dataframe merges" },
+    { type: "action.http", label: "REST Gateway", category: "data", badge: "HTTP", icon: Globe, detail: "HTTP REST call (Retries x3)", conn: "conn_rest_01" },
+
+    // Flow Control & Human Gates
+    { type: "action.approval", label: "Approval Gate", category: "control", badge: "Human Gate", icon: UserCheck, detail: "Pauses run for operator review" },
+    { type: "control.parallel", label: "Parallel Lanes", category: "control", badge: "Parallel", icon: GitBranch, detail: "Concurrent branch execution" },
+    { type: "control.delay", label: "Delay Cooldown", category: "control", badge: "Delay", icon: Clock, detail: "Execution pause timer" },
+    { type: "action.event_publish", label: "Event Publish", category: "control", badge: "Event", icon: Send, detail: "Emit NATS JetStream event" },
+    { type: "action.notification", label: "Slack / Teams", category: "control", badge: "Notification", icon: Bell, detail: "Channel alert dispatch" },
+    { type: "audit.log", label: "Immutable Audit", category: "control", badge: "Audit", icon: ShieldCheck, detail: "Tamper-evident audit trail" },
   ];
+
+  const categories = [
+    { id: "all", label: "All" },
+    { id: "aws", label: "AWS Cloud" },
+    { id: "databases", label: "Databases" },
+    { id: "triggers", label: "Triggers" },
+    { id: "automation", label: "Automation" },
+    { id: "control", label: "Control & Logic" },
+  ];
+
+  const filteredPalette = nodePalette.filter((item) => {
+    const matchesCat = paletteCategory === "all" || item.category === paletteCategory;
+    const matchesSearch =
+      paletteSearch === "" ||
+      item.label.toLowerCase().includes(paletteSearch.toLowerCase()) ||
+      item.detail.toLowerCase().includes(paletteSearch.toLowerCase()) ||
+      item.badge.toLowerCase().includes(paletteSearch.toLowerCase()) ||
+      item.type.toLowerCase().includes(paletteSearch.toLowerCase());
+    return matchesCat && matchesSearch;
+  });
 
   const handleAddNode = (template: (typeof nodePalette)[0]) => {
     const newNode: NodeItem = {
@@ -180,7 +234,7 @@ export default function WorkflowsPage() {
       detail: template.detail,
       badge: template.badge,
       connection_id: template.conn,
-      config: {},
+      config: (template as any).config ? { ...(template as any).config } : {},
     };
     setNodes([...nodes, newNode]);
     setSelectedNode(newNode);
@@ -415,37 +469,72 @@ export default function WorkflowsPage() {
                 <Layers className="w-3.5 h-3.5 text-[#874436]" />
                 Node Library
               </span>
-              <span className="text-[10px] text-[#968676] font-mono">{nodePalette.length} components</span>
+              <span className="text-[10px] text-[#968676] font-mono">{filteredPalette.length} / {nodePalette.length} components</span>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-[#968676]" />
+              <input
+                type="text"
+                value={paletteSearch}
+                onChange={(e) => setPaletteSearch(e.target.value)}
+                placeholder="Search nodes (e.g. S3, Lambda, SQS)..."
+                className="w-full bg-[#FAF8F5] border border-[#D5CABE] rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-[#1B1B1B] placeholder-[#968676] focus:outline-none focus:border-[#874436]"
+              />
+            </div>
+
+            {/* Category Pills */}
+            <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[10px] no-scrollbar">
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setPaletteCategory(cat.id)}
+                  className={`px-2 py-1 rounded-md shrink-0 font-medium transition-all ${
+                    paletteCategory === cat.id
+                      ? "bg-[#874436] text-white"
+                      : "bg-[#E6DFD5] text-[#4F4F4F] hover:bg-[#D5CABE] hover:text-[#1B1B1B]"
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
             </div>
 
             <p className="text-[11px] text-[#4F4F4F] leading-relaxed">Click any component to append it directly to the DAG pipeline:</p>
 
-            <div className="space-y-1.5 max-h-[580px] overflow-y-auto pr-1">
-              {nodePalette.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.label}
-                    onClick={() => handleAddNode(item)}
-                    className="w-full p-2.5 rounded-lg bg-[#F3EFEA] hover:bg-[#FAF8F5] border border-[#D5CABE] hover:border-[#874436] text-left transition-all group flex items-start gap-2.5"
-                  >
-                    <div className="w-6 h-6 rounded bg-[#FAF8F5] group-hover:bg-[#F8EBE8] text-[#874436] flex items-center justify-center shrink-0 border border-[#D5CABE] mt-0.5 shadow-xs">
-                      <Icon className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-[#1B1B1B] group-hover:text-[#874436] truncate">
-                          {item.label}
-                        </span>
-                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#E6DFD5] text-[#1B1B1B] font-medium">
-                          {item.badge}
-                        </span>
+            <div className="space-y-1.5 max-h-[520px] overflow-y-auto pr-1">
+              {filteredPalette.length === 0 ? (
+                <div className="p-4 text-center text-xs text-[#968676]">
+                  No components match &ldquo;{paletteSearch}&rdquo; in this category.
+                </div>
+              ) : (
+                filteredPalette.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.label}
+                      onClick={() => handleAddNode(item)}
+                      className="w-full p-2.5 rounded-lg bg-[#F3EFEA] hover:bg-[#FAF8F5] border border-[#D5CABE] hover:border-[#874436] text-left transition-all group flex items-start gap-2.5"
+                    >
+                      <div className="w-6 h-6 rounded bg-[#FAF8F5] group-hover:bg-[#F8EBE8] text-[#874436] flex items-center justify-center shrink-0 border border-[#D5CABE] mt-0.5 shadow-xs">
+                        <Icon className="w-3.5 h-3.5" />
                       </div>
-                      <p className="text-[10px] text-[#4F4F4F] truncate mt-0.5">{item.detail}</p>
-                    </div>
-                  </button>
-                );
-              })}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-[#1B1B1B] group-hover:text-[#874436] truncate">
+                            {item.label}
+                          </span>
+                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#E6DFD5] text-[#1B1B1B] font-medium">
+                            {item.badge}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-[#4F4F4F] truncate mt-0.5">{item.detail}</p>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
@@ -569,6 +658,75 @@ export default function WorkflowsPage() {
                 className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               />
             </div>
+
+            {selectedNode?.type.startsWith("action.aws") && (
+              <div className="p-3 rounded-lg bg-orange-50 border border-orange-200 space-y-2.5">
+                <div className="flex items-center gap-2 text-orange-950 font-bold text-xs">
+                  <Cloud className="w-4 h-4 text-orange-600" />
+                  Amazon Web Services (AWS) Configuration
+                </div>
+                <p className="text-[11px] text-slate-700">
+                  Executes live SigV4 IAM requests against Amazon Web Services using native Boto3 client sessions.
+                </p>
+                <div>
+                  <label className="block text-[10px] text-slate-700 mb-1 font-semibold">Target AWS Connection</label>
+                  <select
+                    value={selectedNode?.connection_id || "conn_aws_01"}
+                    onChange={(e) => {
+                      const updated = { ...selectedNode, connection_id: e.target.value };
+                      setSelectedNode(updated);
+                      setNodes(nodes.map((n) => (n.id === updated.id ? updated : n)));
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded p-1.5 text-slate-900 text-xs font-mono"
+                  >
+                    <option value="conn_aws_01">conn_aws_01 (AWS Master Suite - IAM Role / Keys)</option>
+                    <option value="conn_aws_s3">conn_aws_s3 (Amazon S3 Dedicated Bucket)</option>
+                    <option value="conn_aws_sqs">conn_aws_sqs (Amazon SQS Production Bus)</option>
+                    <option value="conn_aws_lambda">conn_aws_lambda (AWS Serverless Execution)</option>
+                    <option value="conn_aws_dynamo">conn_aws_dynamo (Amazon DynamoDB Fast Store)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-700 mb-1 font-semibold">AWS Operation</label>
+                  <input
+                    type="text"
+                    value={selectedNode?.config?.operation || "execute"}
+                    onChange={(e) => {
+                      const updated = {
+                        ...selectedNode,
+                        config: { ...(selectedNode?.config || {}), operation: e.target.value },
+                      };
+                      setSelectedNode(updated);
+                      setNodes(nodes.map((n) => (n.id === updated.id ? updated : n)));
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded p-1.5 text-slate-900 text-xs font-mono"
+                    placeholder="e.g. put_object, send_message, invoke, get_item"
+                  />
+                </div>
+              </div>
+            )}
+
+            {selectedNode?.type.startsWith("action.") && ["mysql", "mongodb", "mssql", "oracle", "datalake"].includes(selectedNode?.type.replace("action.", "")) && (
+              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 space-y-2.5">
+                <div className="flex items-center gap-2 text-emerald-950 font-bold text-xs">
+                  <Database className="w-4 h-4 text-emerald-600" />
+                  Database Connection & Target
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-700 mb-1 font-semibold">Target Connection</label>
+                  <input
+                    type="text"
+                    value={selectedNode?.connection_id || `conn_${selectedNode?.type.replace("action.", "")}_01`}
+                    onChange={(e) => {
+                      const updated = { ...selectedNode, connection_id: e.target.value };
+                      setSelectedNode(updated);
+                      setNodes(nodes.map((n) => (n.id === updated.id ? updated : n)));
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded p-1.5 text-slate-900 text-xs font-mono"
+                  />
+                </div>
+              </div>
+            )}
 
             {selectedNode?.type.startsWith("action.db") && (
               <div>

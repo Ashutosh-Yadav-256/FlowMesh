@@ -109,6 +109,42 @@ class ConnectorRegistry:
         except Exception:
             pass
 
+        try:
+            from connectors.mysql.connector import MySqlConnector
+            self.register("mysql", MySqlConnector())
+        except Exception:
+            pass
+
+        try:
+            from connectors.mongodb.connector import MongoDbConnector
+            self.register("mongodb", MongoDbConnector())
+        except Exception:
+            pass
+
+        try:
+            from connectors.mssql.connector import MsSqlConnector
+            self.register("mssql", MsSqlConnector())
+        except Exception:
+            pass
+
+        try:
+            from connectors.oracle.connector import OracleConnector
+            self.register("oracle", OracleConnector())
+        except Exception:
+            pass
+
+        try:
+            from connectors.datalake.connector import DataLakeConnector
+            self.register("datalake", DataLakeConnector())
+        except Exception:
+            pass
+
+        try:
+            from connectors.airflow.connector import AirflowConnector
+            self.register("airflow", AirflowConnector())
+        except Exception:
+            pass
+
     def register(self, conn_type: str, connector: Connector) -> None:
         """Registers a connector implementation for a specific connection type."""
         self._connectors[conn_type.lower()] = connector
