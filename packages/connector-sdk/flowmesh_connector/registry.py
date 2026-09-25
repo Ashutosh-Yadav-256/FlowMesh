@@ -81,6 +81,34 @@ class ConnectorRegistry:
         except Exception:
             pass
 
+        try:
+            from connectors.aws.connector import (
+                AwsConnector,
+                AwsS3Connector,
+                AwsSqsConnector,
+                AwsSnsConnector,
+                AwsLambdaConnector,
+                AwsDynamoDbConnector,
+                AwsEventBridgeConnector,
+                AwsSecretsManagerConnector,
+                AwsCloudWatchConnector,
+                AwsStepFunctionsConnector,
+                AwsKmsConnector,
+            )
+            self.register("aws", AwsConnector())
+            self.register("aws_s3", AwsS3Connector())
+            self.register("aws_sqs", AwsSqsConnector())
+            self.register("aws_sns", AwsSnsConnector())
+            self.register("aws_lambda", AwsLambdaConnector())
+            self.register("aws_dynamodb", AwsDynamoDbConnector())
+            self.register("aws_eventbridge", AwsEventBridgeConnector())
+            self.register("aws_secrets_manager", AwsSecretsManagerConnector())
+            self.register("aws_cloudwatch", AwsCloudWatchConnector())
+            self.register("aws_step_functions", AwsStepFunctionsConnector())
+            self.register("aws_kms", AwsKmsConnector())
+        except Exception:
+            pass
+
     def register(self, conn_type: str, connector: Connector) -> None:
         """Registers a connector implementation for a specific connection type."""
         self._connectors[conn_type.lower()] = connector

@@ -28,6 +28,12 @@ import {
   Eye,
   EyeOff,
   Shield,
+  Cloud,
+  Boxes,
+  Zap,
+  Activity,
+  Workflow,
+  Inbox,
 } from "lucide-react";
 import { fetchFromApi, postToApi, deleteFromApi, getActiveTenantId } from "@/lib/api";
 import { InputShake, InputShakeHandle } from "@/components/InputShake";
@@ -186,6 +192,50 @@ const fallbackConnections: ConnectionItem[] = [
     config: { environment_url: "https://acmeprod.crm.dynamics.com", environment_id: "Default-98213840-acme" },
     last_tested_at: "Just now",
     created_at: "2026-09-24",
+    enabled: true,
+  },
+  {
+    id: "conn_aws_s3_01",
+    name: "Amazon S3 Data Lake",
+    type: "aws_s3",
+    status: "healthy",
+    agent_id: null,
+    config: { bucket: "flowmesh-enterprise-lake", region: "us-east-1", sse_algorithm: "aws:kms" },
+    last_tested_at: "Just now",
+    created_at: "2026-09-25",
+    enabled: true,
+  },
+  {
+    id: "conn_aws_sqs_01",
+    name: "Amazon SQS Dispatch Queue",
+    type: "aws_sqs",
+    status: "healthy",
+    agent_id: null,
+    config: { queue_url: "https://sqs.us-east-1.amazonaws.com/123456789012/order-dispatch.fifo", region: "us-east-1", fifo: true },
+    last_tested_at: "Just now",
+    created_at: "2026-09-25",
+    enabled: true,
+  },
+  {
+    id: "conn_aws_lambda_01",
+    name: "AWS Lambda Event Handlers",
+    type: "aws_lambda",
+    status: "healthy",
+    agent_id: null,
+    config: { function_name: "flowmesh-order-processor", region: "us-east-1", runtime: "python3.12" },
+    last_tested_at: "Just now",
+    created_at: "2026-09-25",
+    enabled: true,
+  },
+  {
+    id: "conn_aws_dynamo_01",
+    name: "Amazon DynamoDB Session State",
+    type: "aws_dynamodb",
+    status: "healthy",
+    agent_id: null,
+    config: { table_name: "FlowMeshSessions", region: "us-east-1", billing_mode: "PAY_PER_REQUEST" },
+    last_tested_at: "Just now",
+    created_at: "2026-09-25",
     enabled: true,
   },
 ];
@@ -501,6 +551,72 @@ export default function ConnectionsPage() {
       setConnPort("443");
       setConnDatabase("Default-98213840-acme");
       setConnUser("power-platform-flowmesh-client");
+    } else if (typeId === "aws") {
+      setConnName("Amazon Web Services (Master Suite)");
+      setConnHost("iam.amazonaws.com");
+      setConnPort("443");
+      setConnDatabase("arn:aws:iam::123456789012:role/FlowMeshIntegrationRole");
+      setConnUser("AKIAIOSFODNN7EXAMPLE");
+    } else if (typeId === "aws_s3") {
+      setConnName("Amazon S3 Object Storage & Data Lake");
+      setConnHost("s3.us-east-1.amazonaws.com");
+      setConnPort("443");
+      setConnDatabase("flowmesh-enterprise-lake");
+      setConnUser("AKIAIOSFODNN7EXAMPLE");
+    } else if (typeId === "aws_sqs") {
+      setConnName("Amazon SQS Standard & FIFO Queue");
+      setConnHost("sqs.us-east-1.amazonaws.com");
+      setConnPort("443");
+      setConnDatabase("https://sqs.us-east-1.amazonaws.com/123456789012/order-events.fifo");
+      setConnUser("AKIAIOSFODNN7EXAMPLE");
+    } else if (typeId === "aws_sns") {
+      setConnName("Amazon SNS Pub/Sub & Fan-out");
+      setConnHost("sns.us-east-1.amazonaws.com");
+      setConnPort("443");
+      setConnDatabase("arn:aws:sns:us-east-1:123456789012:flowmesh-alerts");
+      setConnUser("AKIAIOSFODNN7EXAMPLE");
+    } else if (typeId === "aws_lambda") {
+      setConnName("AWS Lambda Serverless Functions");
+      setConnHost("lambda.us-east-1.amazonaws.com");
+      setConnPort("443");
+      setConnDatabase("flowmesh-order-processor");
+      setConnUser("AKIAIOSFODNN7EXAMPLE");
+    } else if (typeId === "aws_dynamodb") {
+      setConnName("Amazon DynamoDB NoSQL Document Store");
+      setConnHost("dynamodb.us-east-1.amazonaws.com");
+      setConnPort("443");
+      setConnDatabase("FlowMeshSessions");
+      setConnUser("AKIAIOSFODNN7EXAMPLE");
+    } else if (typeId === "aws_eventbridge") {
+      setConnName("Amazon EventBridge Enterprise Bus");
+      setConnHost("events.us-east-1.amazonaws.com");
+      setConnPort("443");
+      setConnDatabase("flowmesh-enterprise-bus");
+      setConnUser("AKIAIOSFODNN7EXAMPLE");
+    } else if (typeId === "aws_secrets_manager") {
+      setConnName("AWS Secrets Manager Credential Vault");
+      setConnHost("secretsmanager.us-east-1.amazonaws.com");
+      setConnPort("443");
+      setConnDatabase("prod/flowmesh/credentials");
+      setConnUser("AKIAIOSFODNN7EXAMPLE");
+    } else if (typeId === "aws_cloudwatch") {
+      setConnName("Amazon CloudWatch Metrics & Logs");
+      setConnHost("monitoring.us-east-1.amazonaws.com");
+      setConnPort("443");
+      setConnDatabase("/aws/flowmesh/production");
+      setConnUser("AKIAIOSFODNN7EXAMPLE");
+    } else if (typeId === "aws_step_functions") {
+      setConnName("AWS Step Functions State Machine");
+      setConnHost("states.us-east-1.amazonaws.com");
+      setConnPort("443");
+      setConnDatabase("arn:aws:states:us-east-1:123456789012:stateMachine:OrderFlow");
+      setConnUser("AKIAIOSFODNN7EXAMPLE");
+    } else if (typeId === "aws_kms") {
+      setConnName("AWS KMS Envelope Encryption Key");
+      setConnHost("kms.us-east-1.amazonaws.com");
+      setConnPort("443");
+      setConnDatabase("arn:aws:kms:us-east-1:123456789012:key/mrk-flowmesh-kek");
+      setConnUser("AKIAIOSFODNN7EXAMPLE");
     }
 
     setConnPassword("");
@@ -997,6 +1113,17 @@ export default function ConnectionsPage() {
                             {conn.type === "ansible" && <FileCode className={`w-4 h-4 ${isEnabled ? "text-[#874436]" : "text-[#968676]"}`} />}
                             {conn.type === "azure_automation" && <RotateCw className={`w-4 h-4 ${isEnabled ? "text-[#455CA1]" : "text-[#968676]"}`} />}
                             {conn.type === "power_platform" && <Network className={`w-4 h-4 ${isEnabled ? "text-[#2E6B47]" : "text-[#968676]"}`} />}
+                            {conn.type === "aws" && <Cloud className={`w-4 h-4 ${isEnabled ? "text-[#E17709]" : "text-[#968676]"}`} />}
+                            {conn.type === "aws_s3" && <Boxes className={`w-4 h-4 ${isEnabled ? "text-[#2E6B47]" : "text-[#968676]"}`} />}
+                            {conn.type === "aws_sqs" && <Inbox className={`w-4 h-4 ${isEnabled ? "text-[#874436]" : "text-[#968676]"}`} />}
+                            {conn.type === "aws_sns" && <Radio className={`w-4 h-4 ${isEnabled ? "text-[#874436]" : "text-[#968676]"}`} />}
+                            {conn.type === "aws_lambda" && <Zap className={`w-4 h-4 ${isEnabled ? "text-[#E17709]" : "text-[#968676]"}`} />}
+                            {conn.type === "aws_dynamodb" && <Database className={`w-4 h-4 ${isEnabled ? "text-[#455CA1]" : "text-[#968676]"}`} />}
+                            {conn.type === "aws_eventbridge" && <Workflow className={`w-4 h-4 ${isEnabled ? "text-[#874436]" : "text-[#968676]"}`} />}
+                            {conn.type === "aws_secrets_manager" && <KeyRound className={`w-4 h-4 ${isEnabled ? "text-[#874436]" : "text-[#968676]"}`} />}
+                            {conn.type === "aws_cloudwatch" && <Activity className={`w-4 h-4 ${isEnabled ? "text-[#2E6B47]" : "text-[#968676]"}`} />}
+                            {conn.type === "aws_step_functions" && <Network className={`w-4 h-4 ${isEnabled ? "text-[#874436]" : "text-[#968676]"}`} />}
+                            {conn.type === "aws_kms" && <Lock className={`w-4 h-4 ${isEnabled ? "text-[#455CA1]" : "text-[#968676]"}`} />}
                           </span>
                           <div>
                             <div className="flex items-center gap-1.5">
@@ -1261,6 +1388,45 @@ export default function ConnectionsPage() {
                       { id: "ansible", label: "Ansible Controller", icon: FileCode, badge: "Playbooks / CLI" },
                       { id: "azure_automation", label: "Azure Automation", icon: RotateCw, badge: "Runbooks / Hybrid" },
                       { id: "power_platform", label: "Power Platform", icon: Network, badge: "Flows / Dataverse" },
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      const isSelected = selectedType === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => handleSelectType(item.id)}
+                          className={`p-3 rounded-xl border text-left transition-all ${
+                            isSelected
+                              ? "bg-[#F8EBE8] border-[#874436] text-[#874436] shadow-sm ring-1 ring-[#874436]"
+                              : "bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300"
+                          }`}
+                        >
+                          <Icon className={`w-5 h-5 mb-1.5 ${isSelected ? "text-[#874436]" : "text-slate-500"}`} />
+                          <p className="font-bold text-xs text-slate-900">{item.label}</p>
+                          <span className="text-[10px] text-slate-500 font-mono">{item.badge}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                    Amazon Web Services (AWS) Enterprise Cloud &amp; Serverless Ecosystem
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {[
+                      { id: "aws", label: "AWS Master Suite", icon: Cloud, badge: "IAM / SigV4 / STS" },
+                      { id: "aws_s3", label: "Amazon S3", icon: Boxes, badge: "Buckets / Lake / KMS" },
+                      { id: "aws_sqs", label: "Amazon SQS", icon: Inbox, badge: "FIFO & Standard / DLQ" },
+                      { id: "aws_sns", label: "Amazon SNS", icon: Radio, badge: "Pub/Sub Fan-out" },
+                      { id: "aws_lambda", label: "AWS Lambda", icon: Zap, badge: "Serverless Compute" },
+                      { id: "aws_dynamodb", label: "DynamoDB", icon: Database, badge: "NoSQL / Key-Value" },
+                      { id: "aws_eventbridge", label: "EventBridge", icon: Workflow, badge: "Bus & Event Routing" },
+                      { id: "aws_secrets_manager", label: "Secrets Manager", icon: KeyRound, badge: "Automated Rotation" },
+                      { id: "aws_cloudwatch", label: "CloudWatch", icon: Activity, badge: "Metrics / Log Groups" },
+                      { id: "aws_step_functions", label: "Step Functions", icon: Network, badge: "State Machine Engine" },
+                      { id: "aws_kms", label: "AWS KMS", icon: Lock, badge: "Envelope Key / HSM" },
                     ].map((item) => {
                       const Icon = item.icon;
                       const isSelected = selectedType === item.id;
@@ -1794,6 +1960,49 @@ export default function ConnectionsPage() {
                         { table: "charges", cols: ["id (varchar, PK)", "amount (integer)", "currency (varchar)", "status (varchar)"] },
                         { table: "invoices", cols: ["id (varchar, PK)", "customer_id (varchar)", "amount_due (integer)", "status (varchar)"] },
                         { table: "payment_intents", cols: ["id (varchar, PK)", "amount (integer)", "status (varchar)", "client_secret (varchar)"] },
+                      ]
+                    : schemaModalConn.type === "aws" || schemaModalConn.type === "aws_s3"
+                    ? [
+                        { table: "s3.buckets", cols: ["name (varchar, PK)", "region (varchar)", "creation_date (timestamp)", "sse_enabled (boolean)"] },
+                        { table: "s3.objects", cols: ["key (varchar, PK)", "size_bytes (bigint)", "etag (varchar)", "storage_class (varchar)"] },
+                        { table: "s3.lifecycle_rules", cols: ["id (varchar, PK)", "status (varchar)", "transition_days (integer)"] },
+                      ]
+                    : schemaModalConn.type === "aws_sqs"
+                    ? [
+                        { table: "sqs.queues", cols: ["queue_url (varchar, PK)", "arn (varchar)", "fifo_queue (boolean)", "approx_messages (integer)"] },
+                        { table: "sqs.dead_letter_queues", cols: ["dlq_arn (varchar, PK)", "max_receive_count (integer)"] },
+                      ]
+                    : schemaModalConn.type === "aws_lambda"
+                    ? [
+                        { table: "lambda.functions", cols: ["function_name (varchar, PK)", "arn (varchar)", "runtime (varchar)", "memory_size (integer)"] },
+                        { table: "lambda.event_sources", cols: ["uuid (varchar, PK)", "batch_size (integer)", "state (varchar)"] },
+                      ]
+                    : schemaModalConn.type === "aws_dynamodb"
+                    ? [
+                        { table: "dynamodb.tables", cols: ["table_name (varchar, PK)", "arn (varchar)", "status (varchar)", "item_count (integer)"] },
+                        { table: "dynamodb.indexes", cols: ["index_name (varchar, PK)", "type (varchar)", "projection (varchar)"] },
+                      ]
+                    : schemaModalConn.type === "aws_eventbridge"
+                    ? [
+                        { table: "eventbridge.rules", cols: ["name (varchar, PK)", "event_bus_name (varchar)", "state (varchar)", "schedule (varchar)"] },
+                        { table: "eventbridge.targets", cols: ["id (varchar, PK)", "arn (varchar)", "retry_policy (varchar)"] },
+                      ]
+                    : schemaModalConn.type === "aws_secrets_manager"
+                    ? [
+                        { table: "secretsmanager.secrets", cols: ["name (varchar, PK)", "arn (varchar)", "last_rotated_date (timestamp)", "rotation_enabled (boolean)"] },
+                      ]
+                    : schemaModalConn.type === "aws_cloudwatch"
+                    ? [
+                        { table: "cloudwatch.metric_alarms", cols: ["alarm_name (varchar, PK)", "metric_name (varchar)", "namespace (varchar)", "state (varchar)"] },
+                        { table: "cloudwatch.log_groups", cols: ["log_group_name (varchar, PK)", "retention_days (integer)", "stored_bytes (bigint)"] },
+                      ]
+                    : schemaModalConn.type === "aws_step_functions"
+                    ? [
+                        { table: "stepfunctions.state_machines", cols: ["name (varchar, PK)", "arn (varchar)", "status (varchar)", "type (varchar)"] },
+                      ]
+                    : schemaModalConn.type === "aws_kms"
+                    ? [
+                        { table: "kms.keys", cols: ["key_id (varchar, PK)", "key_arn (varchar)", "key_usage (varchar)", "enabled (boolean)"] },
                       ]
                     : [
                         { table: "orders", cols: ["id (varchar, PK)", "customer_id (varchar)", "total_amount (numeric)", "created_at (timestamp)"] },

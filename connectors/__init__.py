@@ -19,6 +19,19 @@ from connectors.ssh.connector import SshParamikoConnector
 from connectors.ansible.connector import AnsibleConnector
 from connectors.azure_automation.connector import AzureAutomationConnector
 from connectors.power_platform.connector import PowerPlatformConnector
+from connectors.aws import (
+    AwsConnector,
+    AwsS3Connector,
+    AwsSqsConnector,
+    AwsSnsConnector,
+    AwsLambdaConnector,
+    AwsDynamoDbConnector,
+    AwsEventBridgeConnector,
+    AwsSecretsManagerConnector,
+    AwsCloudWatchConnector,
+    AwsStepFunctionsConnector,
+    AwsKmsConnector,
+)
 
 __all__ = [
     "PostgresConnector",
@@ -37,6 +50,17 @@ __all__ = [
     "AnsibleConnector",
     "AzureAutomationConnector",
     "PowerPlatformConnector",
+    "AwsConnector",
+    "AwsS3Connector",
+    "AwsSqsConnector",
+    "AwsSnsConnector",
+    "AwsLambdaConnector",
+    "AwsDynamoDbConnector",
+    "AwsEventBridgeConnector",
+    "AwsSecretsManagerConnector",
+    "AwsCloudWatchConnector",
+    "AwsStepFunctionsConnector",
+    "AwsKmsConnector",
 ]
 
 
