@@ -292,12 +292,12 @@ export default function ConnectionsPage() {
   const [testSteps, setTestSteps] = useState<Array<{ name: string; status: string; duration_ms: number; message: string }>>([]);
   const [testError, setTestError] = useState<string | null>(null);
 
-  const [showOAuthModal, setShowOAuthModal] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState(false);
+  const [oauthClientId, setOauthClientId] = useState("ca_live_flowmesh_enterprise");
+  const [oauthEnvironment, setOauthEnvironment] = useState<"production" | "sandbox">("production");
+  const [oauthDomain, setOauthDomain] = useState("");
   const [oauthAuthenticated, setOauthAuthenticated] = useState(false);
   const [oauthAccountEmail, setOauthAccountEmail] = useState("");
   const [oauthAccountId, setOauthAccountId] = useState("");
-  const [oauthPassword, setOauthPassword] = useState("");
 
   const nameShakeRef = useRef<InputShakeHandle>(null);
   const hostShakeRef = useRef<InputShakeHandle>(null);
@@ -306,8 +306,6 @@ export default function ConnectionsPage() {
   const userShakeRef = useRef<InputShakeHandle>(null);
   const passwordShakeRef = useRef<InputShakeHandle>(null);
   const oauthCardShakeRef = useRef<InputShakeHandle>(null);
-  const oauthEmailShakeRef = useRef<InputShakeHandle>(null);
-  const oauthPasswordShakeRef = useRef<InputShakeHandle>(null);
   const testShakeRef = useRef<InputShakeHandle>(null);
 
   const loadConnections = async () => {
@@ -620,7 +618,6 @@ export default function ConnectionsPage() {
     }
 
     setConnPassword("");
-    setOauthPassword("");
     setOauthAccountEmail("");
     nameShakeRef.current?.cancel();
     hostShakeRef.current?.cancel();
@@ -634,7 +631,7 @@ export default function ConnectionsPage() {
 
   const handleProceedFromStep2 = () => {
     let hasError = false;
-    const isOAuth = selectedType === "stripe" || selectedType === "github" || selectedType === "salesforce";
+    const isOAuth = selectedType === "stripe" || selectedType === "github" || selectedType === "salesforce" || selectedType === "google" || selectedType === "aws_sso";
 
     if (!connName.trim()) {
       nameShakeRef.current?.trigger("Connection name is required.");
@@ -643,7 +640,7 @@ export default function ConnectionsPage() {
 
     if (isOAuth) {
       if (!oauthAuthenticated) {
-        oauthCardShakeRef.current?.trigger("Official login required: Please sign in via the official Stripe login portal before proceeding.");
+        oauthCardShakeRef.current?.trigger(`Official login required: Please click 'Redirect to Official ${selectedType.toUpperCase()} Login' to authorize directly on their official service.`);
         hasError = true;
       }
     } else {
@@ -684,29 +681,50 @@ export default function ConnectionsPage() {
     setWizardStep(4);
   };
 
-  const handleOAuthAuthorize = () => {
-    let modalError = false;
-    if (!oauthAccountEmail.trim() || !oauthAccountEmail.includes("@")) {
-      oauthEmailShakeRef.current?.trigger("Please enter a valid official account email.");
-      modalError = true;
-    }
-    if (!oauthPassword.trim()) {
-      oauthPasswordShakeRef.current?.trigger("Official provider password is required to authorize session.");
-      modalError = true;
-    }
-    if (modalError) {
+  const handleRedirectToOAuth = () => {
+    if (!connName.trim()) {
+      nameShakeRef.current?.trigger("Connection name is required.");
       return;
     }
 
-    setOauthLoading(true);
-    setTimeout(() => {
-      setOauthLoading(false);
-      setOauthAuthenticated(true);
-      const generatedAcc = `acct_${selectedType}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-      setOauthAccountId(generatedAcc);
-      setShowOAuthModal(false);
-      oauthCardShakeRef.current?.cancel();
-    }, 1200);
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+    const redirectUri = `${origin}/connections/oauth/callback`;
+    const stateToken = `fm_${Math.random().toString(36).substring(2, 12)}_${Date.now()}`;
+
+    const pending = {
+      name: connName,
+      provider: selectedType,
+      agent_id: connAgentId === "cloud" ? null : connAgentId,
+      environment: oauthEnvironment,
+      client_id: oauthClientId,
+      state: stateToken,
+    };
+    sessionStorage.setItem("flowmesh_pending_oauth", JSON.stringify(pending));
+
+    let authUrl = "";
+    if (selectedType === "stripe") {
+      const clientId = oauthClientId.trim() || "ca_live_flowmesh_enterprise";
+      authUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${encodeURIComponent(clientId)}&scope=read_write&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(stateToken)}`;
+    } else if (selectedType === "github") {
+      const clientId = oauthClientId.trim() || "flowmesh_github_app";
+      authUrl = `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(clientId)}&scope=repo,read:org,admin:repo_hook&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(stateToken)}`;
+    } else if (selectedType === "salesforce") {
+      const domain = oauthDomain.trim() || "login.salesforce.com";
+      const clientId = oauthClientId.trim() || "flowmesh_salesforce_connected_app";
+      authUrl = `https://${domain}/services/oauth2/authorize?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(stateToken)}`;
+    } else if (selectedType === "google") {
+      const clientId = oauthClientId.trim() || "flowmesh-enterprise.apps.googleusercontent.com";
+      authUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=https://www.googleapis.com/auth/cloud-platform%20email%20profile&access_type=offline&prompt=consent&state=${encodeURIComponent(stateToken)}`;
+    } else if (selectedType === "aws_sso" || selectedType === "aws_cognito") {
+      const domain = oauthDomain.trim() || "flowmesh.auth.us-east-1.amazonauth.com";
+      const clientId = oauthClientId.trim() || "flowmesh_aws_cognito_client";
+      authUrl = `https://${domain}/oauth2/authorize?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid+email+profile&state=${encodeURIComponent(stateToken)}`;
+    } else {
+      authUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${encodeURIComponent(oauthClientId.trim() || "ca_live_flowmesh_enterprise")}&scope=read_write&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(stateToken)}`;
+    }
+
+    // DIRECT REAL BROWSER REDIRECTION TO THE OFFICIAL SERVICE LOGIN
+    window.location.href = authUrl;
   };
 
   const handleRunWizardTest = async () => {
@@ -714,7 +732,7 @@ export default function ConnectionsPage() {
     setTestError(null);
     setTestSuccess(false);
 
-    const isOAuth = selectedType === "stripe" || selectedType === "github" || selectedType === "salesforce";
+    const isOAuth = selectedType === "stripe" || selectedType === "github" || selectedType === "salesforce" || selectedType === "google" || selectedType === "aws_sso";
 
     if (isOAuth && !oauthAuthenticated) {
       setTestError(`Please sign in via the official ${selectedType.toUpperCase()} login portal in Step 2 before testing.`);
@@ -1466,49 +1484,103 @@ export default function ConnectionsPage() {
                 </div>
 
                 {}
-                {selectedType === "stripe" ? (
-                  <InputShake ref={oauthCardShakeRef} message="Official login required: Please sign in via the official Stripe login portal before proceeding.">
-                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                {(selectedType === "stripe" || selectedType === "github" || selectedType === "salesforce" || selectedType === "google" || selectedType === "aws_sso") ? (
+                  <InputShake ref={oauthCardShakeRef} message={`Official login required: Please click 'Redirect to Official ${selectedType.toUpperCase()} Login' to authorize on their official portal.`}>
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Shield className="w-4 h-4 text-indigo-600" />
-                          <span className="font-bold text-slate-800">Official Provider Authorization (OAuth 2.0)</span>
+                          <span className="font-bold text-slate-800">Direct Official Provider OAuth 2.0 Redirection</span>
                         </div>
-                        <span className="text-[10px] font-mono uppercase bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded font-bold">
-                          Live Production SSO
+                        <span className="text-[10px] font-mono uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-bold">
+                          Zero Simulation · Real Redirect
                         </span>
                       </div>
                       <p className="text-slate-600 text-[11px] leading-relaxed">
-                        Production security policy requires establishing an authentic session by signing in on the service&apos;s official login portal. FlowMesh never sees your password; we exchange an official OAuth authorization grant for an envelope-encrypted token.
+                        FlowMesh does not simulate or proxy your login. Clicking the button below will <strong>directly navigate your browser</strong> to the official <strong>{selectedType.toUpperCase()}</strong> login portal. You authenticate directly on their domain, and the provider redirects back with an authorized token grant.
                       </p>
+
+                      <div className="space-y-3 bg-white p-3 rounded-lg border border-slate-200 text-slate-700 text-xs">
+                        <div>
+                          <label className="block text-slate-600 font-medium mb-1">
+                            {selectedType === "stripe" ? "Stripe Client ID (Connect App)" : `${selectedType.toUpperCase()} OAuth Client ID`}
+                          </label>
+                          <input
+                            type="text"
+                            value={oauthClientId}
+                            onChange={(e) => setOauthClientId(e.target.value)}
+                            placeholder={selectedType === "stripe" ? "ca_live_flowmesh_enterprise" : "Enter OAuth Client ID"}
+                            className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-slate-900 font-mono text-[11px] focus:outline-none focus:border-[#874436]"
+                          />
+                        </div>
+
+                        {(selectedType === "salesforce" || selectedType === "aws_sso") && (
+                          <div>
+                            <label className="block text-slate-600 font-medium mb-1">
+                              Authorization Domain
+                            </label>
+                            <input
+                              type="text"
+                              value={oauthDomain}
+                              onChange={(e) => setOauthDomain(e.target.value)}
+                              placeholder="e.g. your-tenant.auth.us-east-1.amazonauth.com or your-org.my.salesforce.com"
+                              className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-slate-900 font-mono text-[11px] focus:outline-none focus:border-[#874436]"
+                            />
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-slate-600 font-medium mb-1">Environment</label>
+                            <select
+                              value={oauthEnvironment}
+                              onChange={(e) => setOauthEnvironment(e.target.value as any)}
+                              className="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-slate-900 text-[11px] focus:outline-none focus:border-[#874436]"
+                            >
+                              <option value="production">Production</option>
+                              <option value="sandbox">Sandbox / Test</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-slate-600 font-medium mb-1">Official Redirect URI</label>
+                            <input
+                              type="text"
+                              readOnly
+                              value={typeof window !== "undefined" ? `${window.location.origin}/connections/oauth/callback` : "/connections/oauth/callback"}
+                              className="w-full bg-slate-100 border border-slate-200 rounded p-1.5 text-slate-500 font-mono text-[10px] cursor-not-allowed"
+                            />
+                          </div>
+                        </div>
+                      </div>
 
                       {oauthAuthenticated ? (
                         <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                             <div>
-                              <p className="font-bold text-emerald-900">Official Authentication Established</p>
+                              <p className="font-bold text-emerald-900">Official Session Authorized</p>
                               <p className="text-[10px] text-emerald-700 font-mono">
-                                Account: {oauthAccountId} ({oauthAccountEmail || "authenticated"})
+                                Account: {oauthAccountId} ({oauthAccountEmail || "verified"})
                               </p>
                             </div>
                           </div>
                           <button
                             type="button"
-                            onClick={() => setShowOAuthModal(true)}
-                            className="px-2.5 py-1 text-[11px] font-semibold text-emerald-800 bg-white border border-emerald-300 rounded hover:bg-emerald-50"
+                            onClick={handleRedirectToOAuth}
+                            className="px-2.5 py-1 text-[11px] font-semibold text-emerald-800 bg-white border border-emerald-300 rounded hover:bg-emerald-50 flex items-center gap-1"
                           >
+                            <ExternalLink className="w-3 h-3" />
                             Re-authenticate
                           </button>
                         </div>
                       ) : (
                         <button
                           type="button"
-                          onClick={() => setShowOAuthModal(true)}
-                          className="w-full py-2.5 bg-[#635BFF] hover:bg-[#5349e0] text-white rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-colors"
+                          onClick={handleRedirectToOAuth}
+                          className="w-full py-2.5 bg-[#635BFF] hover:bg-[#5349e0] text-white rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer"
                         >
                           <ExternalLink className="w-4 h-4" />
-                          Log in on Official Stripe Login Portal
+                          Redirect to Official {selectedType.toUpperCase()} Login Portal
                         </button>
                       )}
                     </div>
@@ -1770,108 +1842,6 @@ export default function ConnectionsPage() {
                   Save Connection & Done
                 </button>
               )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {}
-      {showOAuthModal && (
-        <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
-            {}
-            <div className="bg-[#635BFF] p-5 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center font-bold text-sm tracking-wider">
-                  S
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm">Stripe Official Connect</h3>
-                  <p className="text-[10px] text-white/80 flex items-center gap-1">
-                    <Lock className="w-2.5 h-2.5" /> https:
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowOAuthModal(false)}
-                className="text-white/80 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4 text-xs">
-              <div className="space-y-1">
-                <h4 className="font-bold text-slate-900 text-sm">Sign in to your Stripe Account</h4>
-                <p className="text-slate-500 text-[11px] leading-relaxed">
-                  Authorize <strong>FlowMesh Enterprise</strong> to connect to your live production billing workspace.
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Account Email</label>
-                  <InputShake ref={oauthEmailShakeRef} message="Please enter a valid official account email.">
-                    <input
-                      type="email"
-                      value={oauthAccountEmail}
-                      onChange={(e) => setOauthAccountEmail(e.target.value)}
-                      placeholder="e.g. billing-admin@enterprise.com"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:border-[#635BFF]"
-                    />
-                  </InputShake>
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Stripe Password</label>
-                  <InputShake ref={oauthPasswordShakeRef} message="Official provider password is required to authorize session.">
-                    <input
-                      type="password"
-                      value={oauthPassword}
-                      onChange={(e) => setOauthPassword(e.target.value)}
-                      placeholder="••••••••••••••••"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-900 focus:outline-none focus:border-[#635BFF]"
-                    />
-                  </InputShake>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-[11px]">
-                <p className="font-semibold text-slate-800">Permissions Requested:</p>
-                <div className="space-y-1 text-slate-600">
-                  <div className="flex items-center gap-1.5 text-emerald-700">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Read customer balances & invoice ledger</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-emerald-700">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Create payment charges & refund transactions</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-emerald-700">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Subscribe to live webhook event streams</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2 flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowOAuthModal(false)}
-                  className="px-4 py-2 rounded-lg text-slate-600 hover:text-slate-900 text-xs font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleOAuthAuthorize}
-                  disabled={oauthLoading}
-                  className="px-5 py-2.5 bg-[#635BFF] hover:bg-[#5349e0] text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow-sm transition-colors"
-                >
-                  <Lock className={`w-3.5 h-3.5 ${oauthLoading ? "animate-spin" : ""}`} />
-                  {oauthLoading ? "Authenticating via Stripe..." : "Authorize Application & Connect"}
-                </button>
-              </div>
             </div>
           </div>
         </div>
