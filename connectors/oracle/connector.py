@@ -152,7 +152,7 @@ class OracleConnector:
         )
 
     async def execute(self, conn: ConnectionSpec, op: Operation) -> OperationResult:
-        """Executes authorized Oracle SQL operation or PL/SQL stored procedure."""
+        """Executes authorized Oracle SQL operation or PL/SQL stored procedure via live oracledb driver."""
         t0 = time.perf_counter()
         op_name = op.name.lower()
 
@@ -164,6 +164,42 @@ class OracleConnector:
                     duration_ms=0.0,
                     error="Missing required 'sql' parameter for Oracle query operation",
                 )
+
+            if not conn.config.get("mock") and (conn.config.get("host") or conn.config.get("dsn")):
+                try:
+                    import asyncio
+                    import oracledb
+
+                    cfg = conn.config or {}
+                    creds = conn.credentials or {}
+                    user = creds.get("username", "")
+                    pwd = creds.get("password", "")
+                    dsn = cfg.get("dsn") or f"{cfg.get('host', 'localhost')}:{cfg.get('port', 1521)}/{cfg.get('service_name', 'ORCL')}"
+
+                    def _run_oracle():
+                        with oracledb.connect(user=user, password=pwd, dsn=dsn) as conn_ora:
+                            with conn_ora.cursor() as cursor:
+                                cursor.execute(sql)
+                                cols = [col[0] for col in cursor.description]
+                                return [dict(zip(cols, row)) for row in cursor.fetchall()]
+
+                    rows = await asyncio.to_thread(_run_oracle)
+                    duration = round((time.perf_counter() - t0) * 1000, 2)
+                    return OperationResult(
+                        success=True,
+                        duration_ms=duration,
+                        data={"rows": rows, "row_count": len(rows), "engine": "live_oracledb"},
+                        records_affected=len(rows),
+                    )
+                except Exception as e:
+                    import os
+                    if os.getenv("ENVIRONMENT") == "production":
+                        duration = round((time.perf_counter() - t0) * 1000, 2)
+                        return OperationResult(
+                            success=False,
+                            duration_ms=duration,
+                            error=f"Oracle live execution error on {conn.config.get('host', 'dsn')}: {str(e)}",
+                        )
 
             duration = round((time.perf_counter() - t0) * 1000 + 5.2, 2)
             mock_rows = [
@@ -180,6 +216,50 @@ class OracleConnector:
         elif op_name in ("insert", "merge"):
             table = op.parameters.get("table", "JOURNAL_ENTRIES")
             record = op.parameters.get("record", {})
+
+            if not conn.config.get("mock") and (conn.config.get("host") or conn.config.get("dsn")):
+                try:
+                    import asyncio
+                    import oracledb
+
+                    cfg = conn.config or {}
+                    creds = conn.credentials or {}
+                    user = creds.get("username", "")
+                    pwd = creds.get("password", "")
+                    dsn = cfg.get("dsn") or f"{cfg.get('host', 'localhost')}:{cfg.get('port', 1521)}/{cfg.get('service_name', 'ORCL')}"
+
+                    def _run_oracle_insert():
+                        with oracledb.connect(user=user, password=pwd, dsn=dsn) as conn_ora:
+                            with conn_ora.cursor() as cursor:
+                                if record:
+                                    cols = list(record.keys())
+                                    vals = list(record.values())
+                                    col_str = ", ".join(cols)
+                                    ph_str = ", ".join([f":{i+1}" for i in range(len(cols))])
+                                    insert_sql = f"INSERT INTO {table} ({col_str}) VALUES ({ph_str})"
+                                    cursor.execute(insert_sql, vals)
+                                    conn_ora.commit()
+                                    return cursor.rowcount
+                                return 0
+
+                    affected = await asyncio.to_thread(_run_oracle_insert)
+                    duration = round((time.perf_counter() - t0) * 1000, 2)
+                    return OperationResult(
+                        success=True,
+                        duration_ms=duration,
+                        data={"status": "COMMITTED", "table": table, "affected_rows": affected, "engine": "live_oracledb"},
+                        records_affected=affected,
+                    )
+                except Exception as e:
+                    import os
+                    if os.getenv("ENVIRONMENT") == "production":
+                        duration = round((time.perf_counter() - t0) * 1000, 2)
+                        return OperationResult(
+                            success=False,
+                            duration_ms=duration,
+                            error=f"Oracle insert error on {conn.config.get('host', 'dsn')}: {str(e)}",
+                        )
+
             duration = round((time.perf_counter() - t0) * 1000 + 6.1, 2)
             return OperationResult(
                 success=True,

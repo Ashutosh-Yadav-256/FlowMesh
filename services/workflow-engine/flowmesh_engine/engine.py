@@ -694,8 +694,49 @@ class WorkflowEngine:
 
         if node.connection_id:
             conn = await self.conn_repo.get_by_id(node.connection_id)
-            if conn and getattr(conn, "agent_id", None):
-                return await self._dispatch_edge_agent(conn.agent_id, conn, node, resolved_config, context)
+            if conn:
+                if getattr(conn, "agent_id", None):
+                    return await self._dispatch_edge_agent(conn.agent_id, conn, node, resolved_config, context)
+
+                # Dynamic Cloud / Direct Connector Execution
+                try:
+                    connector = get_connector(conn.type)
+                except Exception:
+                    connector = None
+
+                if connector:
+                    creds = {}
+                    sec_repo = ConnectionSecretRepository(self.db, self.tenant_id)
+                    sec = await sec_repo.get_by_connection_id(conn.id)
+                    if sec and sec.encrypted_secret:
+                        try:
+                            creds = envelope_crypto.decrypt(sec.encrypted_secret)
+                        except Exception:
+                            creds = {}
+
+                    merged_config = dict(conn.config or {})
+                    merged_config.update(resolved_config)
+
+                    spec = ConnectionSpec(
+                        id=conn.id,
+                        tenant_id=self.tenant_id,
+                        type=conn.type,
+                        name=conn.name,
+                        config=merged_config,
+                        credentials=creds,
+                    )
+                    op_name = resolved_config.get("operation") or resolved_config.get("action") or (
+                        node_type.split(".", 1)[1] if "." in node_type else node_type
+                    )
+                    op = Operation(
+                        id=f"op_{uuid.uuid4().hex[:6]}",
+                        name=op_name,
+                        parameters=resolved_config,
+                    )
+                    res = await connector.execute(spec, op)
+                    if not res.success:
+                        raise RuntimeError(res.error or f"Connector '{conn.type}' operation '{op_name}' failed")
+                    return res.data or {}
 
         if node_type in ("trigger.webhook", "trigger.event", "trigger.nats"):
             return {
@@ -816,6 +857,24 @@ class WorkflowEngine:
             channel = resolved_config.get("channel", "slack")
             recipient = resolved_config.get("recipient") or resolved_config.get("target") or "#integrations"
             message = resolved_config.get("message") or f"Notification for step {node.id}"
+            webhook_url = resolved_config.get("webhook_url") or (recipient if recipient.startswith("http") else None)
+
+            if webhook_url:
+                try:
+                    import httpx
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        resp = await client.post(webhook_url, json={"text": message, "channel": channel, "node_id": node.id})
+                        return {
+                            "delivered": resp.is_success,
+                            "status_code": resp.status_code,
+                            "channel": channel,
+                            "recipient": recipient,
+                            "message": message,
+                            "timestamp": utc_now().isoformat(),
+                        }
+                except Exception as e:
+                    engine_logger.warning("Failed to dispatch live notification webhook: %s", str(e)) if engine_logger else None
+
             return {
                 "delivered": True,
                 "channel": channel,

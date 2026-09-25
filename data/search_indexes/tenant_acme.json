@@ -1,6 +1,6 @@
 [
   {
-    "id": "conn_rest_e45a80",
+    "id": "conn_rest_27df46",
     "tenant_id": "tenant_acme",
     "entity_type": "connection",
     "title": "Validation Test Conn (REST)",
@@ -19,7 +19,7 @@
       },
       "type": "rest"
     },
-    "created_at": "2026-09-25T13:10:49.739261",
+    "created_at": "2026-09-25T14:36:50.779929",
     "updated_at": null
   },
   {
@@ -45,32 +45,7 @@
       },
       "type": "postgres"
     },
-    "created_at": "2026-09-25T13:10:28.868136",
-    "updated_at": null
-  },
-  {
-    "id": "conn_redis_01",
-    "tenant_id": "tenant_acme",
-    "entity_type": "connection",
-    "title": "RediForge Cache & Lock (REDIFORGE)",
-    "description": "Type: rediforge | Status: healthy | Agent: cloud",
-    "tags": [
-      "rediforge",
-      "healthy",
-      "connection",
-      "connector"
-    ],
-    "status": "healthy",
-    "url": "/connections",
-    "payload": {
-      "config": {
-        "host": "localhost",
-        "port": 6379,
-        "tls_enabled": true
-      },
-      "type": "rediforge"
-    },
-    "created_at": "2026-09-25T13:10:28.868136",
+    "created_at": "2026-09-25T14:36:21.236242",
     "updated_at": null
   },
   {
@@ -94,7 +69,7 @@
       },
       "type": "rest"
     },
-    "created_at": "2026-09-25T13:10:28.868136",
+    "created_at": "2026-09-25T14:36:21.236242",
     "updated_at": null
   },
   {
@@ -119,7 +94,32 @@
       },
       "type": "sap"
     },
-    "created_at": "2026-09-25T13:10:28.868136",
+    "created_at": "2026-09-25T14:36:21.236242",
+    "updated_at": null
+  },
+  {
+    "id": "conn_redis_01",
+    "tenant_id": "tenant_acme",
+    "entity_type": "connection",
+    "title": "RediForge Cache & Lock (REDIFORGE)",
+    "description": "Type: rediforge | Status: healthy | Agent: cloud",
+    "tags": [
+      "rediforge",
+      "healthy",
+      "connection",
+      "connector"
+    ],
+    "status": "healthy",
+    "url": "/connections",
+    "payload": {
+      "config": {
+        "host": "localhost",
+        "port": 6379,
+        "tls_enabled": true
+      },
+      "type": "rediforge"
+    },
+    "created_at": "2026-09-25T14:36:21.236242",
     "updated_at": null
   },
   {
@@ -143,11 +143,11 @@
       },
       "type": "webhook"
     },
-    "created_at": "2026-09-25T13:10:28.868136",
+    "created_at": "2026-09-25T14:36:21.236242",
     "updated_at": null
   },
   {
-    "id": "wf_466075f6",
+    "id": "wf_fa401d68",
     "tenant_id": "tenant_acme",
     "entity_type": "workflow",
     "title": "API Approval Pipeline",
@@ -167,11 +167,11 @@
       "version": 2,
       "trigger_type": "webhook"
     },
-    "created_at": "2026-09-25T13:10:36.100073",
+    "created_at": "2026-09-25T14:36:27.484364",
     "updated_at": null
   },
   {
-    "id": "wf_27a02557",
+    "id": "wf_4b41c8b8",
     "tenant_id": "tenant_acme",
     "entity_type": "workflow",
     "title": "Extended Nodes Pipeline",
@@ -193,11 +193,11 @@
       "version": 1,
       "trigger_type": "event"
     },
-    "created_at": "2026-09-25T13:10:35.989602",
+    "created_at": "2026-09-25T14:36:27.372551",
     "updated_at": null
   },
   {
-    "id": "wf_6ae1d8b6",
+    "id": "wf_de32d4e5",
     "tenant_id": "tenant_acme",
     "entity_type": "workflow",
     "title": "Sensitive Export DAG",
@@ -217,11 +217,11 @@
       "version": 1,
       "trigger_type": "webhook"
     },
-    "created_at": "2026-09-25T13:10:35.915553",
+    "created_at": "2026-09-25T14:36:27.338770",
     "updated_at": null
   },
   {
-    "id": "wf_29f5198c",
+    "id": "wf_e53c662a",
     "tenant_id": "tenant_acme",
     "entity_type": "workflow",
     "title": "Expense Approval DAG",
@@ -242,7 +242,7 @@
       "version": 1,
       "trigger_type": "webhook"
     },
-    "created_at": "2026-09-25T13:10:35.870279",
+    "created_at": "2026-09-25T14:36:27.291619",
     "updated_at": null
   },
   {
@@ -268,7 +268,7 @@
       "version": 4,
       "trigger_type": "webhook"
     },
-    "created_at": "2026-09-25T13:10:28.868136",
+    "created_at": "2026-09-25T14:36:21.236242",
     "updated_at": null
   },
   {
@@ -293,7 +293,7 @@
       "version": 1,
       "trigger_type": "webhook"
     },
-    "created_at": "2026-09-25T13:10:28.868136",
+    "created_at": "2026-09-25T14:36:21.236242",
     "updated_at": null
   },
   {
@@ -317,36 +317,36 @@
       "version": 2,
       "trigger_type": "event"
     },
-    "created_at": "2026-09-25T13:10:28.868136",
+    "created_at": "2026-09-25T14:36:21.236242",
     "updated_at": null
   },
   {
-    "id": "RUN-API-APPR-0327DE",
+    "id": "RUN-API-APPR-C0DFC1",
     "tenant_id": "tenant_acme",
     "entity_type": "run",
-    "title": "RUN-API-APPR-0327DE (wf_466075f6)",
+    "title": "RUN-API-APPR-C0DFC1 (wf_fa401d68)",
     "description": "Status: SUCCESS | Duration: 0.008s | Trigger: webhook",
     "tags": [
       "SUCCESS",
-      "wf_466075f6",
+      "wf_fa401d68",
       "webhook",
       "run"
     ],
     "status": "SUCCESS",
     "url": "/runs",
     "payload": {
-      "workflow_id": "wf_466075f6",
-      "trace_id": "0520d5700c364468938c5ca3816cdb49"
+      "workflow_id": "wf_fa401d68",
+      "trace_id": "ef0fca72dd5f408e9c5b0e726eb5d88a"
     },
-    "created_at": "2026-09-25T13:10:36.122349",
+    "created_at": "2026-09-25T14:36:27.507348",
     "updated_at": null
   },
   {
-    "id": "RUN-EXT-FD1C77",
+    "id": "RUN-EXT-52CFD4",
     "tenant_id": "tenant_acme",
     "entity_type": "run",
-    "title": "RUN-EXT-FD1C77 (wf_order_processing)",
-    "description": "Status: SUCCESS | Duration: 0.083s | Trigger: webhook",
+    "title": "RUN-EXT-52CFD4 (wf_order_processing)",
+    "description": "Status: SUCCESS | Duration: 0.086s | Trigger: webhook",
     "tags": [
       "SUCCESS",
       "wf_order_processing",
@@ -357,51 +357,51 @@
     "url": "/runs",
     "payload": {
       "workflow_id": "wf_order_processing",
-      "trace_id": "89835a1ed39a493299419107b713ebf4"
+      "trace_id": "efde5357d47344aa9b6fde3c71ae8832"
     },
-    "created_at": "2026-09-25T13:10:35.989602",
+    "created_at": "2026-09-25T14:36:27.374560",
     "updated_at": null
   },
   {
-    "id": "RUN-REJ-58CE1D",
+    "id": "RUN-REJ-4835B8",
     "tenant_id": "tenant_acme",
     "entity_type": "run",
-    "title": "RUN-REJ-58CE1D (wf_6ae1d8b6)",
+    "title": "RUN-REJ-4835B8 (wf_de32d4e5)",
     "description": "Status: REJECTED | Duration: 0.007s | Trigger: webhook",
     "tags": [
       "REJECTED",
-      "wf_6ae1d8b6",
+      "wf_de32d4e5",
       "webhook",
       "run"
     ],
     "status": "REJECTED",
     "url": "/runs",
     "payload": {
-      "workflow_id": "wf_6ae1d8b6",
-      "trace_id": "7d300e774af84d27862afe61e9d1464a"
+      "workflow_id": "wf_de32d4e5",
+      "trace_id": "b4ed1119fed84e75a67a36d47caafe3b"
     },
-    "created_at": "2026-09-25T13:10:35.917160",
+    "created_at": "2026-09-25T14:36:27.340984",
     "updated_at": null
   },
   {
-    "id": "RUN-APPR-914618",
+    "id": "RUN-APPR-DB2402",
     "tenant_id": "tenant_acme",
     "entity_type": "run",
-    "title": "RUN-APPR-914618 (wf_29f5198c)",
+    "title": "RUN-APPR-DB2402 (wf_e53c662a)",
     "description": "Status: SUCCESS | Duration: 0.011s | Trigger: webhook",
     "tags": [
       "SUCCESS",
-      "wf_29f5198c",
+      "wf_e53c662a",
       "webhook",
       "run"
     ],
     "status": "SUCCESS",
     "url": "/runs",
     "payload": {
-      "workflow_id": "wf_29f5198c",
-      "trace_id": "b8855f26d9ed49ee9fa0c0e1a5308a09"
+      "workflow_id": "wf_e53c662a",
+      "trace_id": "11455a46d25641289e591c0495b841ad"
     },
-    "created_at": "2026-09-25T13:10:35.872279",
+    "created_at": "2026-09-25T14:36:27.293152",
     "updated_at": null
   },
   {
@@ -422,7 +422,7 @@
       "workflow_id": "wf_order_processing",
       "trace_id": "8cf92f3577b34da6a3ce929d0e0e9981"
     },
-    "created_at": "2026-09-25T13:10:28.868136",
+    "created_at": "2026-09-25T14:36:21.236242",
     "updated_at": null
   },
   {
@@ -443,7 +443,7 @@
       "workflow_id": "wf_order_processing",
       "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
     },
-    "created_at": "2026-09-25T13:10:28.868136",
+    "created_at": "2026-09-25T14:36:21.236242",
     "updated_at": null
   },
   {

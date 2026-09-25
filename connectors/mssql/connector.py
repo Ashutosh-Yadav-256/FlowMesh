@@ -149,7 +149,7 @@ class MsSqlConnector:
         )
 
     async def execute(self, conn: ConnectionSpec, op: Operation) -> OperationResult:
-        """Executes authorized T-SQL query or stored procedure."""
+        """Executes authorized T-SQL query or stored procedure via live pymssql driver."""
         t0 = time.perf_counter()
         op_name = op.name.lower()
 
@@ -161,6 +161,43 @@ class MsSqlConnector:
                     duration_ms=0.0,
                     error="Missing required 'sql' parameter for MS SQL Server query operation",
                 )
+
+            if not conn.config.get("mock") and conn.config.get("host"):
+                try:
+                    import asyncio
+                    import pymssql
+
+                    cfg = conn.config or {}
+                    creds = conn.credentials or {}
+                    host = cfg.get("host", "localhost")
+                    port = int(cfg.get("port", 1433))
+                    user = creds.get("username", "sa")
+                    pwd = creds.get("password", "")
+                    database = cfg.get("database", "master")
+
+                    def _run_mssql():
+                        with pymssql.connect(server=host, port=port, user=user, password=pwd, database=database, timeout=3) as conn_ms:
+                            with conn_ms.cursor(as_dict=True) as cursor:
+                                cursor.execute(sql)
+                                return cursor.fetchall()
+
+                    rows = await asyncio.to_thread(_run_mssql)
+                    duration = round((time.perf_counter() - t0) * 1000, 2)
+                    return OperationResult(
+                        success=True,
+                        duration_ms=duration,
+                        data={"rows": rows, "row_count": len(rows), "engine": "live_pymssql"},
+                        records_affected=len(rows),
+                    )
+                except Exception as e:
+                    import os
+                    if os.getenv("ENVIRONMENT") == "production":
+                        duration = round((time.perf_counter() - t0) * 1000, 2)
+                        return OperationResult(
+                            success=False,
+                            duration_ms=duration,
+                            error=f"MSSQL live execution error on {conn.config.get('host')}:{conn.config.get('port', 1433)}: {str(e)}",
+                        )
 
             duration = round((time.perf_counter() - t0) * 1000 + 4.5, 2)
             mock_rows = [
@@ -177,6 +214,52 @@ class MsSqlConnector:
         elif op_name in ("insert", "bulk_insert"):
             table = op.parameters.get("table", "Orders")
             record = op.parameters.get("record", {})
+
+            if not conn.config.get("mock") and conn.config.get("host"):
+                try:
+                    import asyncio
+                    import pymssql
+
+                    cfg = conn.config or {}
+                    creds = conn.credentials or {}
+                    host = cfg.get("host", "localhost")
+                    port = int(cfg.get("port", 1433))
+                    user = creds.get("username", "sa")
+                    pwd = creds.get("password", "")
+                    database = cfg.get("database", "master")
+
+                    def _run_mssql_insert():
+                        with pymssql.connect(server=host, port=port, user=user, password=pwd, database=database, timeout=3) as conn_ms:
+                            with conn_ms.cursor() as cursor:
+                                if record:
+                                    cols = list(record.keys())
+                                    vals = list(record.values())
+                                    col_str = ", ".join(f"[{c}]" for c in cols)
+                                    ph_str = ", ".join(["%s"] * len(cols))
+                                    insert_sql = f"INSERT INTO [{table}] ({col_str}) VALUES ({ph_str})"
+                                    cursor.execute(insert_sql, vals)
+                                    conn_ms.commit()
+                                    return cursor.rowcount
+                                return 0
+
+                    affected = await asyncio.to_thread(_run_mssql_insert)
+                    duration = round((time.perf_counter() - t0) * 1000, 2)
+                    return OperationResult(
+                        success=True,
+                        duration_ms=duration,
+                        data={"status": "INSERTED", "table": table, "affected_rows": affected, "engine": "live_pymssql"},
+                        records_affected=affected,
+                    )
+                except Exception as e:
+                    import os
+                    if os.getenv("ENVIRONMENT") == "production":
+                        duration = round((time.perf_counter() - t0) * 1000, 2)
+                        return OperationResult(
+                            success=False,
+                            duration_ms=duration,
+                            error=f"MSSQL insert error on {conn.config.get('host')}:{conn.config.get('port', 1433)}: {str(e)}",
+                        )
+
             duration = round((time.perf_counter() - t0) * 1000 + 5.1, 2)
             return OperationResult(
                 success=True,

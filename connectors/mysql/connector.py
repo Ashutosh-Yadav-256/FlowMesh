@@ -132,7 +132,7 @@ class MySqlConnector:
         )
 
     async def execute(self, conn: ConnectionSpec, op: Operation) -> OperationResult:
-        """Executes MySQL query or insert."""
+        """Executes MySQL query or insert via live PyMySQL driver."""
         t0 = time.perf_counter()
         op_name = op.name.lower()
 
@@ -140,6 +140,56 @@ class MySqlConnector:
             sql = op.parameters.get("sql", "")
             if not sql:
                 return OperationResult(success=False, duration_ms=0.0, error="Missing required 'sql' parameter")
+
+            if not conn.config.get("mock") and conn.config.get("host"):
+                try:
+                    import asyncio
+                    import pymysql
+                    import pymysql.cursors
+
+                    cfg = conn.config or {}
+                    creds = conn.credentials or {}
+                    host = cfg.get("host", "localhost")
+                    port = int(cfg.get("port", 3306))
+                    user = creds.get("username") or creds.get("user") or "root"
+                    password = creds.get("password", "")
+                    database = cfg.get("database", "mysql")
+                    ssl = {"ssl": True} if cfg.get("ssl_mode") in ("require", "verify-ca", "verify-full") else None
+
+                    def _run_mysql_query():
+                        conn_my = pymysql.connect(
+                            host=host,
+                            port=port,
+                            user=user,
+                            password=password,
+                            database=database,
+                            ssl=ssl,
+                            cursorclass=pymysql.cursors.DictCursor,
+                            connect_timeout=3,
+                        )
+                        with conn_my:
+                            with conn_my.cursor() as cursor:
+                                cursor.execute(sql)
+                                return cursor.fetchall()
+
+                    rows = await asyncio.to_thread(_run_mysql_query)
+                    duration = round((time.perf_counter() - t0) * 1000, 2)
+                    return OperationResult(
+                        success=True,
+                        duration_ms=duration,
+                        data={"rows": rows, "row_count": len(rows), "engine": "live_pymysql"},
+                        records_affected=len(rows),
+                    )
+                except Exception as e:
+                    import os
+                    if os.getenv("ENVIRONMENT") == "production":
+                        duration = round((time.perf_counter() - t0) * 1000, 2)
+                        return OperationResult(
+                            success=False,
+                            duration_ms=duration,
+                            error=f"MySQL execution error on {conn.config.get('host')}:{conn.config.get('port', 3306)}: {str(e)}",
+                        )
+
             duration = round((time.perf_counter() - t0) * 1000 + 4.2, 2)
             mock_rows = [
                 {"id": 101, "email": "admin@flowmesh.io", "created_at": "2026-09-22 10:00:00"},
@@ -153,6 +203,63 @@ class MySqlConnector:
             )
 
         elif op_name in ("insert", "upsert"):
+            if not conn.config.get("mock") and conn.config.get("host"):
+                try:
+                    import asyncio
+                    import pymysql
+
+                    cfg = conn.config or {}
+                    creds = conn.credentials or {}
+                    host = cfg.get("host", "localhost")
+                    port = int(cfg.get("port", 3306))
+                    user = creds.get("username") or creds.get("user") or "root"
+                    password = creds.get("password", "")
+                    database = cfg.get("database", "mysql")
+                    table = op.parameters.get("table", "records")
+                    record = op.parameters.get("record", {})
+                    ssl = {"ssl": True} if cfg.get("ssl_mode") in ("require", "verify-ca", "verify-full") else None
+
+                    def _run_mysql_insert():
+                        conn_my = pymysql.connect(
+                            host=host,
+                            port=port,
+                            user=user,
+                            password=password,
+                            database=database,
+                            ssl=ssl,
+                            connect_timeout=3,
+                        )
+                        with conn_my:
+                            with conn_my.cursor() as cursor:
+                                if record:
+                                    cols = list(record.keys())
+                                    vals = list(record.values())
+                                    col_str = ", ".join(f"`{c}`" for c in cols)
+                                    ph_str = ", ".join(["%s"] * len(cols))
+                                    insert_sql = f"INSERT INTO `{table}` ({col_str}) VALUES ({ph_str})"
+                                    cursor.execute(insert_sql, vals)
+                                    conn_my.commit()
+                                    return cursor.rowcount
+                                return 0
+
+                    affected = await asyncio.to_thread(_run_mysql_insert)
+                    duration = round((time.perf_counter() - t0) * 1000, 2)
+                    return OperationResult(
+                        success=True,
+                        duration_ms=duration,
+                        data={"status": "COMMITTED", "affected_rows": affected, "engine": "live_pymysql"},
+                        records_affected=affected,
+                    )
+                except Exception as e:
+                    import os
+                    if os.getenv("ENVIRONMENT") == "production":
+                        duration = round((time.perf_counter() - t0) * 1000, 2)
+                        return OperationResult(
+                            success=False,
+                            duration_ms=duration,
+                            error=f"MySQL mutation error on {conn.config.get('host')}:{conn.config.get('port', 3306)}: {str(e)}",
+                        )
+
             duration = round((time.perf_counter() - t0) * 1000 + 5.0, 2)
             return OperationResult(
                 success=True,

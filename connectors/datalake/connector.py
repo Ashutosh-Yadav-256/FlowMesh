@@ -128,16 +128,55 @@ class DataLakeConnector:
         t0 = time.perf_counter()
         op_name = op.name.lower()
 
+        creds = conn.credentials or {}
+        access_key = creds.get("aws_access_key_id") or conn.config.get("aws_access_key_id")
+        secret_key = creds.get("aws_secret_access_key") or conn.config.get("aws_secret_access_key")
+        bucket = conn.config.get("bucket", "lake")
+        is_mock = conn.config.get("mock", False) is True
+
         if op_name in ("write_parquet", "write_partition"):
             path = op.parameters.get("path", "tenant_01/year=2026/month=09/data.parquet")
             records_count = int(op.parameters.get("count", 1000))
+
+            if not is_mock and access_key and secret_key:
+                try:
+                    import boto3
+                    s3 = boto3.client(
+                        "s3",
+                        aws_access_key_id=access_key,
+                        aws_secret_access_key=secret_key,
+                        region_name=conn.config.get("region", "us-east-1"),
+                    )
+                    content = op.parameters.get("content", b"FLOWMESH_PARQUET_PLACEHOLDER")
+                    if isinstance(content, str):
+                        content = content.encode("utf-8")
+                    s3.put_object(Bucket=bucket, Key=path, Body=content)
+                    return OperationResult(
+                        success=True,
+                        duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                        data={
+                            "status": "WRITTEN",
+                            "path": f"s3://{bucket}/{path}",
+                            "format": "parquet",
+                            "compression": "snappy",
+                            "rows_written": records_count,
+                        },
+                        records_affected=records_count,
+                    )
+                except Exception as e:
+                    return OperationResult(
+                        success=False,
+                        duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                        error=f"Live S3 Parquet write failed: {str(e)}",
+                    )
+
             duration = round((time.perf_counter() - t0) * 1000 + 7.5, 2)
             return OperationResult(
                 success=True,
                 duration_ms=duration,
                 data={
                     "status": "WRITTEN",
-                    "path": f"s3://{conn.config.get('bucket', 'lake')}/{path}",
+                    "path": f"s3://{bucket}/{path}",
                     "format": "parquet",
                     "compression": "snappy",
                     "rows_written": records_count,
@@ -146,6 +185,30 @@ class DataLakeConnector:
             )
 
         elif op_name in ("list_partitions", "read_metadata"):
+            if not is_mock and access_key and secret_key:
+                try:
+                    import boto3
+                    s3 = boto3.client(
+                        "s3",
+                        aws_access_key_id=access_key,
+                        aws_secret_access_key=secret_key,
+                        region_name=conn.config.get("region", "us-east-1"),
+                    )
+                    res = s3.list_objects_v2(Bucket=bucket, Prefix=op.parameters.get("prefix", ""), MaxKeys=50)
+                    items = [obj["Key"] for obj in res.get("Contents", [])]
+                    return OperationResult(
+                        success=True,
+                        duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                        data={"partitions": items, "count": len(items)},
+                        records_affected=len(items),
+                    )
+                except Exception as e:
+                    return OperationResult(
+                        success=False,
+                        duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                        error=f"Live S3 partition list failed: {str(e)}",
+                    )
+
             duration = round((time.perf_counter() - t0) * 1000 + 4.1, 2)
             partitions = [
                 "year=2026/month=08/part-001.parquet",

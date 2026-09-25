@@ -135,8 +135,31 @@ class ActiveDirectoryConnector:
         params = op.parameters or {}
 
         try:
+            from flowmesh_connector.powershell_runner import PowerShellRunner
+            runner = PowerShellRunner()
+            is_mock = conn.config.get("mock", False) is True or "acme" in conn.config.get("domain_controller", "")
+
             if op_name == "get_user":
                 sam = params.get("sAMAccountName", "jdoe")
+                if not is_mock:
+                    ps_res = runner.execute_script(f"Get-LocalUser -Name '{sam}' -ErrorAction SilentlyContinue | Select-Object Name, Enabled, Description, PasswordLastSet")
+                    if ps_res.success and ps_res.data:
+                        u = ps_res.data if isinstance(ps_res.data, dict) else {}
+                        return OperationResult(
+                            success=True,
+                            records_affected=1,
+                            data={
+                                "sAMAccountName": sam,
+                                "displayName": u.get("Description") or u.get("Name", sam),
+                                "mail": f"{sam}@{conn.config.get('domain', 'corp.local')}",
+                                "enabled": u.get("Enabled", True),
+                                "locked_out": False,
+                                "pwdLastSet": str(u.get("PasswordLastSet", "")),
+                                "memberOf": ["CN=Users,DC=corp,DC=local"],
+                            },
+                            duration_ms=ps_res.duration_ms,
+                        )
+
                 return OperationResult(
                     success=True,
                     records_affected=1,

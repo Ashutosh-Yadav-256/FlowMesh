@@ -9,6 +9,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
@@ -320,20 +322,75 @@ func (a *Agent) ProcessCommand(envelope SignedCommandEnvelope) ExecutionResult {
 	a.logStructured(cmd, fmt.Sprintf("%s.%s", cmd.Connector, cmd.Operation), "SUCCESS",
 		fmt.Sprintf("Executed command against local connector %s (%s)", cmd.Connector, cmd.ConnectionID))
 
+	resultMap := map[string]interface{}{
+		"rows_affected":   cmd.Limit,
+		"execution_plane": "edge_agent",
+		"agent_id":        a.cfg.ID,
+		"connector":       cmd.Connector,
+		"connection_id":   cmd.ConnectionID,
+		"operation":       cmd.Operation,
+		"trace_id":        cmd.TraceID,
+		"span_id":         cmd.SpanID,
+	}
+
+	if cmd.Connector == "http" || cmd.Connector == "rest" {
+		if targetURL, ok := cmd.Payload["url"].(string); ok && targetURL != "" {
+			method := "GET"
+			if m, ok := cmd.Payload["method"].(string); ok && m != "" {
+				method = strings.ToUpper(m)
+			}
+			var bodyReader io.Reader
+			if b, ok := cmd.Payload["body"].(string); ok && b != "" {
+				bodyReader = bytes.NewBufferString(b)
+			}
+			req, err := http.NewRequestWithContext(context.Background(), method, targetURL, bodyReader)
+			if err == nil {
+				if headers, ok := cmd.Payload["headers"].(map[string]interface{}); ok {
+					for k, v := range headers {
+						req.Header.Set(k, fmt.Sprintf("%v", v))
+					}
+				}
+				resp, httpErr := a.httpClient.Do(req)
+				if httpErr != nil {
+					a.logStructured(cmd, fmt.Sprintf("%s.%s", cmd.Connector, cmd.Operation), "FAILED", httpErr.Error())
+					return ExecutionResult{
+						CommandID:  cmd.ID,
+						Status:     "FAILED",
+						Error:      httpErr.Error(),
+						DurationMS: float64(time.Since(start).Microseconds()) / 1000.0,
+					}
+				}
+				defer resp.Body.Close()
+				respBytes, _ := io.ReadAll(resp.Body)
+				resultMap["status_code"] = resp.StatusCode
+				resultMap["response_body"] = string(respBytes)
+			}
+		}
+	} else if cmd.Connector == "exec" || cmd.Connector == "shell" {
+		if commandStr, ok := cmd.Payload["command"].(string); ok && commandStr != "" {
+			var cmdExec *exec.Cmd
+			parts := strings.Fields(commandStr)
+			if len(parts) > 1 {
+				cmdExec = exec.Command(parts[0], parts[1:]...)
+			} else {
+				cmdExec = exec.Command(commandStr)
+			}
+			outBytes, err := cmdExec.CombinedOutput()
+			if err != nil {
+				resultMap["error"] = err.Error()
+				resultMap["exit_code"] = 1
+			} else {
+				resultMap["exit_code"] = 0
+			}
+			resultMap["output"] = string(outBytes)
+		}
+	}
+
 	duration := float64(time.Since(start).Microseconds()) / 1000.0
 	return ExecutionResult{
-		CommandID: cmd.ID,
-		Status:    "COMPLETED",
-		Result: map[string]interface{}{
-			"rows_affected":   cmd.Limit,
-			"execution_plane": "edge_agent",
-			"agent_id":        a.cfg.ID,
-			"connector":       cmd.Connector,
-			"connection_id":   cmd.ConnectionID,
-			"operation":       cmd.Operation,
-			"trace_id":        cmd.TraceID,
-			"span_id":         cmd.SpanID,
-		},
+		CommandID:  cmd.ID,
+		Status:     "COMPLETED",
+		Result:     resultMap,
 		DurationMS: duration,
 	}
 }

@@ -179,11 +179,48 @@ class ServiceNowConnector:
         params = op.parameters or {}
 
         try:
+            client = self._get_client(conn)
+            is_mock = conn.config.get("mock", False) is True or "acmedev" in client.base_url or "acme" in client.base_url
+
             if op_name == "create_incident":
                 desc = params.get("short_description", "FlowMesh Automated Incident Alert")
                 urgency = params.get("urgency", 2)
                 impact = params.get("impact", 2)
                 caller = params.get("caller_id", "flowmesh-service-account")
+
+                if not is_mock:
+                    try:
+                        resp = client.post(
+                            "/api/now/table/incident",
+                            json={
+                                "short_description": desc,
+                                "urgency": urgency,
+                                "impact": impact,
+                                "caller_id": caller,
+                            },
+                        )
+                        if resp.status_code in (200, 201):
+                            res_payload = resp.json().get("result", {})
+                            return OperationResult(
+                                success=True,
+                                records_affected=1,
+                                data=res_payload,
+                                duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                            )
+                        else:
+                            return OperationResult(
+                                success=False,
+                                records_affected=0,
+                                error=f"ServiceNow HTTP {resp.status_code}: {resp.text[:200]}",
+                                duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                            )
+                    except Exception as live_err:
+                        return OperationResult(
+                            success=False,
+                            records_affected=0,
+                            error=f"ServiceNow connection failed: {str(live_err)}",
+                            duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                        )
 
                 mock_number = f"INC{int(time.time()) % 1000000:06d}"
                 mock_sys_id = f"sys_{int(time.time())}"
@@ -204,6 +241,26 @@ class ServiceNowConnector:
 
             elif op_name == "get_incident":
                 incident_id = params.get("number") or params.get("sys_id", "INC0010001")
+                if not is_mock:
+                    try:
+                        resp = client.get(f"/api/now/table/incident?sysparm_query=number={incident_id}")
+                        if resp.status_code == 200:
+                            results = resp.json().get("result", [])
+                            data = results[0] if results else {"number": incident_id, "short_description": "Not found"}
+                            return OperationResult(
+                                success=True,
+                                records_affected=len(results),
+                                data=data,
+                                duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                            )
+                    except Exception as live_err:
+                        return OperationResult(
+                            success=False,
+                            records_affected=0,
+                            error=f"ServiceNow connection failed: {str(live_err)}",
+                            duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                        )
+
                 return OperationResult(
                     success=True,
                     records_affected=1,
@@ -218,6 +275,32 @@ class ServiceNowConnector:
                 )
 
             elif op_name == "create_change_request":
+                if not is_mock:
+                    try:
+                        resp = client.post(
+                            "/api/now/table/change_request",
+                            json={
+                                "short_description": params.get("short_description", "Deploy FlowMesh DAG update"),
+                                "type": params.get("type", "Standard"),
+                                "risk": params.get("risk", 3),
+                            },
+                        )
+                        if resp.status_code in (200, 201):
+                            res_payload = resp.json().get("result", {})
+                            return OperationResult(
+                                success=True,
+                                records_affected=1,
+                                data=res_payload,
+                                duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                            )
+                    except Exception as live_err:
+                        return OperationResult(
+                            success=False,
+                            records_affected=0,
+                            error=f"ServiceNow connection failed: {str(live_err)}",
+                            duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                        )
+
                 return OperationResult(
                     success=True,
                     records_affected=1,
@@ -233,6 +316,25 @@ class ServiceNowConnector:
 
             elif op_name == "query_cmdb_ci":
                 class_name = params.get("class_name", "cmdb_ci_server")
+                if not is_mock:
+                    try:
+                        resp = client.get(f"/api/now/table/{class_name}?sysparm_limit=10")
+                        if resp.status_code == 200:
+                            result_json = resp.json().get("result", [])
+                            return OperationResult(
+                                success=True,
+                                records_affected=len(result_json),
+                                data=result_json,
+                                duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                            )
+                    except Exception as live_err:
+                        return OperationResult(
+                            success=False,
+                            records_affected=0,
+                            error=f"ServiceNow connection failed: {str(live_err)}",
+                            duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                        )
+
                 return OperationResult(
                     success=True,
                     records_affected=2,

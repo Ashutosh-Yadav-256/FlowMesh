@@ -260,6 +260,44 @@ class AwsConnector(AwsBaseConnector):
         op_name = op.name.lower()
         params = op.parameters or {}
 
+        if not self._is_dummy_key(connection):
+            try:
+                import asyncio
+                if "s3" in op_name:
+                    s3 = self._get_client(connection, "s3")
+                    bucket = params.get("bucket", "default-bucket")
+                    key = params.get("key", "data.json")
+                    body = params.get("body", "{}")
+                    raw_b = body.encode("utf-8") if isinstance(body, str) else body
+                    res = await asyncio.to_thread(s3.put_object, Bucket=bucket, Key=key, Body=raw_b)
+                    dur = (time.perf_counter() - t0) * 1000
+                    return OperationResult(success=True, duration_ms=dur, data={"bucket": bucket, "key": key, "etag": res.get("ETag"), "status": "COMPLETED"}, records_affected=1)
+                elif "sqs" in op_name:
+                    sqs = self._get_client(connection, "sqs")
+                    q_url = params.get("queue_url", "")
+                    msg_body = params.get("message_body", params.get("body", "{}"))
+                    res = await asyncio.to_thread(sqs.send_message, QueueUrl=q_url, MessageBody=msg_body)
+                    dur = (time.perf_counter() - t0) * 1000
+                    return OperationResult(success=True, duration_ms=dur, data={"message_id": res.get("MessageId"), "md5": res.get("MD5OfMessageBody")}, records_affected=1)
+                elif "lambda" in op_name:
+                    lam = self._get_client(connection, "lambda")
+                    fn = params.get("function_name", "handler")
+                    import json
+                    raw_payload = json.dumps(params.get("payload", {})).encode("utf-8")
+                    res = await asyncio.to_thread(lam.invoke, FunctionName=fn, Payload=raw_payload)
+                    dur = (time.perf_counter() - t0) * 1000
+                    out = res["Payload"].read().decode("utf-8")
+                    return OperationResult(success=True, duration_ms=dur, data={"status_code": res.get("StatusCode", 200), "executed_function": fn, "payload": json.loads(out) if out else {}}, records_affected=1)
+                elif "dynamo" in op_name:
+                    dyn = self._get_client(connection, "dynamodb")
+                    tbl = params.get("table_name", "orders")
+                    res = await asyncio.to_thread(dyn.get_item, TableName=tbl, Key=params.get("key", {}))
+                    dur = (time.perf_counter() - t0) * 1000
+                    return OperationResult(success=True, duration_ms=dur, data={"table": tbl, "item": res.get("Item", {})}, records_affected=1)
+            except Exception as e:
+                dur = (time.perf_counter() - t0) * 1000
+                return OperationResult(success=False, duration_ms=dur, error=f"Live AWS execution error: {str(e)}")
+
         if "s3" in op_name:
             data = {"bucket": params.get("bucket", "flowmesh-data-lake"), "key": params.get("key", "data.json"), "status": "COMPLETED"}
         elif "sqs" in op_name:
@@ -326,7 +364,35 @@ class AwsS3Connector(AwsBaseConnector):
         )
 
     async def execute(self, connection: ConnectionSpec, op: Operation) -> OperationResult:
+        t0 = time.perf_counter()
         p = op.parameters or {}
+        if not self._is_dummy_key(connection):
+            try:
+                import asyncio
+                s3 = self._get_client(connection, "s3")
+                bucket = p.get("bucket", connection.config.get("bucket", ""))
+                key = p.get("key", "")
+                if op.name == "s3.put_object":
+                    body = p.get("body", "")
+                    raw_body = body.encode("utf-8") if isinstance(body, str) else body
+                    res = await asyncio.to_thread(s3.put_object, Bucket=bucket, Key=key, Body=raw_body)
+                    dur = (time.perf_counter() - t0) * 1000
+                    return OperationResult(success=True, duration_ms=dur, data={"etag": res.get("ETag"), "version_id": res.get("VersionId"), "key": key}, records_affected=1)
+                elif op.name == "s3.get_object":
+                    res = await asyncio.to_thread(s3.get_object, Bucket=bucket, Key=key)
+                    raw = res["Body"].read().decode("utf-8")
+                    dur = (time.perf_counter() - t0) * 1000
+                    return OperationResult(success=True, duration_ms=dur, data={"content": raw, "content_type": res.get("ContentType", "application/octet-stream")}, records_affected=1)
+                elif op.name == "s3.list_objects":
+                    prefix = p.get("prefix", "")
+                    res = await asyncio.to_thread(s3.list_objects_v2, Bucket=bucket, Prefix=prefix)
+                    keys = [obj["Key"] for obj in res.get("Contents", [])]
+                    dur = (time.perf_counter() - t0) * 1000
+                    return OperationResult(success=True, duration_ms=dur, data={"keys": keys, "bucket": bucket}, records_affected=len(keys))
+            except Exception as e:
+                dur = (time.perf_counter() - t0) * 1000
+                return OperationResult(success=False, duration_ms=dur, error=f"Amazon S3 live execution error: {str(e)}")
+
         if op.name == "s3.put_object":
             return OperationResult(success=True, duration_ms=12.4, data={"etag": f'"{uuid.uuid4().hex}"', "version_id": str(uuid.uuid4())[:8], "key": p.get("key")})
         elif op.name == "s3.get_object":
@@ -381,7 +447,28 @@ class AwsSqsConnector(AwsBaseConnector):
         )
 
     async def execute(self, connection: ConnectionSpec, op: Operation) -> OperationResult:
+        t0 = time.perf_counter()
         p = op.parameters or {}
+        if not self._is_dummy_key(connection):
+            try:
+                import asyncio
+                sqs = self._get_client(connection, "sqs")
+                q_url = p.get("queue_url", connection.config.get("queue_url", ""))
+                if op.name == "sqs.send_message":
+                    body = p.get("body") or p.get("message_body", "{}")
+                    res = await asyncio.to_thread(sqs.send_message, QueueUrl=q_url, MessageBody=body)
+                    dur = (time.perf_counter() - t0) * 1000
+                    return OperationResult(success=True, duration_ms=dur, data={"message_id": res.get("MessageId"), "md5": res.get("MD5OfMessageBody")}, records_affected=1)
+                elif op.name in ("sqs.receive_message", "sqs.receive_messages"):
+                    max_msgs = int(p.get("max_messages", 1))
+                    res = await asyncio.to_thread(sqs.receive_message, QueueUrl=q_url, MaxNumberOfMessages=max_msgs)
+                    msgs = [{"message_id": m.get("MessageId"), "body": m.get("Body"), "receipt_handle": m.get("ReceiptHandle")} for m in res.get("Messages", [])]
+                    dur = (time.perf_counter() - t0) * 1000
+                    return OperationResult(success=True, duration_ms=dur, data={"messages": msgs}, records_affected=len(msgs))
+            except Exception as e:
+                dur = (time.perf_counter() - t0) * 1000
+                return OperationResult(success=False, duration_ms=dur, error=f"Amazon SQS live execution error: {str(e)}")
+
         if op.name == "sqs.send_message":
             return OperationResult(success=True, duration_ms=7.8, data={"message_id": f"msg_{uuid.uuid4().hex[:12]}", "md5": "9e107d9d372bb6826bd81d3542a419d6"})
         elif op.name in ("sqs.receive_message", "sqs.receive_messages"):
@@ -433,6 +520,22 @@ class AwsSnsConnector(AwsBaseConnector):
         )
 
     async def execute(self, connection: ConnectionSpec, op: Operation) -> OperationResult:
+        t0 = time.perf_counter()
+        p = op.parameters or {}
+        if not self._is_dummy_key(connection):
+            try:
+                import asyncio
+                sns = self._get_client(connection, "sns")
+                topic_arn = p.get("topic_arn", connection.config.get("topic_arn", ""))
+                msg = p.get("message", "{}")
+                subject = p.get("subject", "FlowMesh Alert")
+                res = await asyncio.to_thread(sns.publish, TopicArn=topic_arn, Message=msg, Subject=subject)
+                dur = (time.perf_counter() - t0) * 1000
+                return OperationResult(success=True, duration_ms=dur, data={"message_id": res.get("MessageId"), "sequence_number": res.get("SequenceNumber")}, records_affected=1)
+            except Exception as e:
+                dur = (time.perf_counter() - t0) * 1000
+                return OperationResult(success=False, duration_ms=dur, error=f"Amazon SNS live execution error: {str(e)}")
+
         return OperationResult(success=True, duration_ms=6.9, data={"message_id": f"sns_{uuid.uuid4().hex[:12]}", "sequence_number": "1000000000000001"})
 
     def operations(self) -> List[OperationSpec]:
@@ -481,8 +584,28 @@ class AwsLambdaConnector(AwsBaseConnector):
         )
 
     async def execute(self, connection: ConnectionSpec, op: Operation) -> OperationResult:
+        t0 = time.perf_counter()
         p = op.parameters or {}
-        fn = p.get("function_name", "flowmesh-order-processor")
+        fn = p.get("function_name", connection.config.get("function_name", "flowmesh-order-processor"))
+        if not self._is_dummy_key(connection):
+            try:
+                import asyncio, json
+                lam = self._get_client(connection, "lambda")
+                payload_bytes = json.dumps(p.get("payload", {})).encode("utf-8")
+                inv_type = "Event" if op.name == "lambda.invoke_async" else "RequestResponse"
+                res = await asyncio.to_thread(lam.invoke, FunctionName=fn, InvocationType=inv_type, Payload=payload_bytes)
+                dur = (time.perf_counter() - t0) * 1000
+                out_payload = res["Payload"].read().decode("utf-8") if "Payload" in res else "{}"
+                return OperationResult(
+                    success=True,
+                    duration_ms=dur,
+                    data={"status_code": res.get("StatusCode", 200), "function": fn, "payload": json.loads(out_payload) if out_payload else {}},
+                    records_affected=1,
+                )
+            except Exception as e:
+                dur = (time.perf_counter() - t0) * 1000
+                return OperationResult(success=False, duration_ms=dur, error=f"AWS Lambda live execution error: {str(e)}")
+
         return OperationResult(
             success=True,
             duration_ms=24.5,
@@ -536,7 +659,25 @@ class AwsDynamoDbConnector(AwsBaseConnector):
         )
 
     async def execute(self, connection: ConnectionSpec, op: Operation) -> OperationResult:
+        t0 = time.perf_counter()
         p = op.parameters or {}
+        table = p.get("table_name", connection.config.get("table_name", "EnterpriseLedger"))
+        if not self._is_dummy_key(connection):
+            try:
+                import asyncio
+                dyn = self._get_client(connection, "dynamodb")
+                if op.name == "dynamodb.get_item":
+                    res = await asyncio.to_thread(dyn.get_item, TableName=table, Key=p.get("key", {}))
+                    dur = (time.perf_counter() - t0) * 1000
+                    return OperationResult(success=True, duration_ms=dur, data={"item": res.get("Item", {})}, records_affected=1)
+                elif op.name == "dynamodb.put_item":
+                    res = await asyncio.to_thread(dyn.put_item, TableName=table, Item=p.get("item", {}))
+                    dur = (time.perf_counter() - t0) * 1000
+                    return OperationResult(success=True, duration_ms=dur, data={"consumed_capacity": res.get("ConsumedCapacity", 1.0), "status": "STORED"}, records_affected=1)
+            except Exception as e:
+                dur = (time.perf_counter() - t0) * 1000
+                return OperationResult(success=False, duration_ms=dur, error=f"Amazon DynamoDB live execution error: {str(e)}")
+
         if op.name == "dynamodb.get_item":
             return OperationResult(success=True, duration_ms=5.2, data={"item": {"pk": p.get("pk", "ORD-101"), "sk": p.get("sk", "METADATA"), "amount": 99.50, "status": "APPROVED"}})
         elif op.name == "dynamodb.put_item":
@@ -773,6 +914,40 @@ class AwsKmsConnector(AwsBaseConnector):
         )
 
     async def execute(self, connection: ConnectionSpec, op: Operation) -> OperationResult:
+        t0 = time.perf_counter()
+        p = op.parameters or {}
+        key_id = p.get("key_id", connection.config.get("key_id", ""))
+        if not self._is_dummy_key(connection):
+            try:
+                import asyncio
+                kms = self._get_client(connection, "kms")
+                if op.name == "kms.encrypt":
+                    plaintext = p.get("plaintext", "")
+                    raw = plaintext.encode("utf-8") if isinstance(plaintext, str) else plaintext
+                    res = await asyncio.to_thread(kms.encrypt, KeyId=key_id, Plaintext=raw)
+                    dur = (time.perf_counter() - t0) * 1000
+                    import base64
+                    b64 = base64.b64encode(res["CiphertextBlob"]).decode("utf-8")
+                    return OperationResult(success=True, duration_ms=dur, data={"ciphertext_blob": b64, "key_id": key_id}, records_affected=1)
+                elif op.name == "kms.decrypt":
+                    blob = p.get("ciphertext_blob", "")
+                    import base64
+                    raw_blob = base64.b64decode(blob) if isinstance(blob, str) else blob
+                    res = await asyncio.to_thread(kms.decrypt, CiphertextBlob=raw_blob)
+                    dur = (time.perf_counter() - t0) * 1000
+                    return OperationResult(success=True, duration_ms=dur, data={"plaintext": res["Plaintext"].decode("utf-8")}, records_affected=1)
+                elif op.name == "kms.generate_data_key":
+                    key_spec = p.get("key_spec", "AES_256")
+                    res = await asyncio.to_thread(kms.generate_data_key, KeyId=key_id, KeySpec=key_spec)
+                    dur = (time.perf_counter() - t0) * 1000
+                    import base64
+                    b64 = base64.b64encode(res["CiphertextBlob"]).decode("utf-8")
+                    plain = base64.b64encode(res["Plaintext"]).decode("utf-8")
+                    return OperationResult(success=True, duration_ms=dur, data={"plaintext": plain, "ciphertext_blob": b64}, records_affected=1)
+            except Exception as e:
+                dur = (time.perf_counter() - t0) * 1000
+                return OperationResult(success=False, duration_ms=dur, error=f"AWS KMS live execution error: {str(e)}")
+
         return OperationResult(
             success=True,
             duration_ms=5.5,

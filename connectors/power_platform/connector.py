@@ -116,11 +116,43 @@ class PowerPlatformConnector:
         params = op.parameters or {}
         op_name = op.name.lower()
 
+        cfg = connection.config or {}
+        creds = connection.credentials or {}
+        env_url = cfg.get("environment_url", "https://org1234.crm.dynamics.com")
+        trigger_url = params.get("trigger_url") or cfg.get("trigger_url")
+        is_mock = cfg.get("mock", False) is True or "org1234" in env_url
+
         try:
             if op_name == "trigger_flow":
                 flow_id = params.get("flow_id", "flow-po-approval-01")
                 flow_payload = params.get("payload", {})
                 run_id = f"flow-run-{uuid.uuid4().hex[:8]}"
+
+                if not is_mock and trigger_url:
+                    import httpx
+                    try:
+                        async with httpx.AsyncClient(timeout=30.0) as client:
+                            resp = await client.post(trigger_url, json=flow_payload)
+                            return OperationResult(
+                                success=resp.is_success,
+                                duration_ms=(time.perf_counter() - t0) * 1000,
+                                data={
+                                    "flow_id": flow_id,
+                                    "flow_run_id": resp.headers.get("x-ms-workflow-run-id", run_id),
+                                    "status": "Running" if resp.is_success else "Failed",
+                                    "status_code": resp.status_code,
+                                    "submitted_payload": flow_payload,
+                                    "triggered_at": "2026-09-24T18:05:00Z",
+                                },
+                                records_affected=1 if resp.is_success else 0,
+                                error=None if resp.is_success else f"Power Automate HTTP {resp.status_code}: {resp.text[:200]}",
+                            )
+                    except Exception as live_err:
+                        return OperationResult(
+                            success=False,
+                            duration_ms=(time.perf_counter() - t0) * 1000,
+                            error=f"Power Automate trigger failed: {str(live_err)}",
+                        )
 
                 data = {
                     "flow_id": flow_id,

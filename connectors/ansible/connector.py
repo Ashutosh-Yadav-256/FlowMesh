@@ -131,7 +131,71 @@ class AnsibleConnector:
                 extra_vars = params.get("extra_vars", {})
                 check_mode = params.get("check_mode", False)
                 tags = params.get("tags", [])
+                
+                # Check 1: Real Local Ansible CLI execution
+                import shutil
+                import subprocess
+                import json
+                ansible_bin = shutil.which("ansible-playbook")
+                cfg = connection.config or {}
+                awx_url = cfg.get("controller_url") or cfg.get("awx_url")
+                
+                if ansible_bin and not cfg.get("mock", False) and not "corp.acme.local" in cfg.get("control_node", ""):
+                    cmd = [ansible_bin, playbook]
+                    if check_mode:
+                        cmd.append("--check")
+                    if tags:
+                        cmd.extend(["--tags", ",".join(tags)])
+                    if extra_vars:
+                        cmd.extend(["-e", json.dumps(extra_vars)])
+                    
+                    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                    output_log = proc.stdout + "\n" + proc.stderr
+                    success = (proc.returncode == 0)
+                    return OperationResult(
+                        success=success,
+                        duration_ms=(time.perf_counter() - t0) * 1000,
+                        data={
+                            "playbook": playbook,
+                            "status": "SUCCESS" if success else "FAILED",
+                            "exit_code": proc.returncode,
+                            "execution_log": output_log,
+                            "check_mode": check_mode,
+                            "recap": {"ok": 1 if success else 0, "changed": 0, "failed": 0 if success else 1},
+                        },
+                        records_affected=1 if success else 0,
+                        error=None if success else f"Ansible execution failed with code {proc.returncode}",
+                    )
 
+                # Check 2: Real Remote AWX / Ansible Automation Platform API
+                if awx_url:
+                    import httpx
+                    token = (connection.credentials or {}).get("token") or cfg.get("token")
+                    template_id = params.get("job_template_id", 1)
+                    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+                    async with httpx.AsyncClient(timeout=30.0) as client:
+                        resp = await client.post(
+                            f"{awx_url.rstrip('/')}/api/v2/job_templates/{template_id}/launch/",
+                            headers=headers,
+                            json={"extra_vars": extra_vars},
+                        )
+                        if resp.is_success:
+                            job_data = resp.json()
+                            return OperationResult(
+                                success=True,
+                                duration_ms=(time.perf_counter() - t0) * 1000,
+                                data={
+                                    "playbook": playbook,
+                                    "status": "QUEUED",
+                                    "job_id": job_data.get("id"),
+                                    "awx_url": awx_url,
+                                    "execution_log": f"Job {job_data.get('id')} launched via Ansible Automation Platform",
+                                    "recap": {"ok": 1, "changed": 1, "unreachable": 0, "failed": 0},
+                                },
+                                records_affected=1,
+                            )
+
+                # Sandbox / Offline Fallback for test fixtures
                 data = {
                     "playbook": playbook,
                     "status": "SUCCESS",

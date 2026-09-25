@@ -129,9 +129,73 @@ class MongoDbConnector:
         )
 
     async def execute(self, conn: ConnectionSpec, op: Operation) -> OperationResult:
-        """Executes MongoDB find, insert, or aggregation pipeline."""
+        """Executes MongoDB find, insert, or aggregation pipeline via live PyMongo driver."""
         t0 = time.perf_counter()
         op_name = op.name.lower()
+
+        if not conn.config.get("mock") and (conn.config.get("host") or conn.config.get("uri") or conn.config.get("connection_string")):
+            try:
+                import asyncio
+                from pymongo import MongoClient
+
+                cfg = conn.config or {}
+                creds = conn.credentials or {}
+                uri = cfg.get("uri") or cfg.get("connection_string")
+                if not uri:
+                    host = cfg.get("host", "localhost")
+                    port = int(cfg.get("port", 27017))
+                    user = creds.get("username")
+                    pwd = creds.get("password")
+                    auth_part = f"{user}:{pwd}@" if user and pwd else ""
+                    uri = f"mongodb://{auth_part}{host}:{port}"
+
+                def _run_mongo():
+                    client = MongoClient(uri, serverSelectionTimeoutMS=2500)
+                    db_name = cfg.get("database", "production")
+                    db = client[db_name]
+                    coll_name = op.parameters.get("collection", "default")
+                    coll = db[coll_name]
+
+                    if op_name in ("find", "query"):
+                        flt = op.parameters.get("filter", {})
+                        limit = int(op.parameters.get("limit", 100))
+                        cursor = coll.find(flt).limit(limit)
+                        docs = list(cursor)
+                        for d in docs:
+                            if "_id" in d:
+                                d["_id"] = str(d["_id"])
+                        return {"documents": docs, "count": len(docs), "collection": coll_name}
+                    elif op_name in ("insert", "insert_one"):
+                        doc = op.parameters.get("document", op.parameters.get("record", {}))
+                        ins_res = coll.insert_one(doc)
+                        return {"inserted_id": str(ins_res.inserted_id), "collection": coll_name}
+                    elif op_name in ("aggregate", "pipeline"):
+                        pipeline = op.parameters.get("pipeline", [])
+                        res = list(coll.aggregate(pipeline))
+                        for d in res:
+                            if "_id" in d:
+                                d["_id"] = str(d["_id"])
+                        return {"results": res, "count": len(res)}
+                    return None
+
+                data = await asyncio.to_thread(_run_mongo)
+                duration = round((time.perf_counter() - t0) * 1000, 2)
+                records_affected = data.get("count", 1) if data else 1
+                return OperationResult(
+                    success=True,
+                    duration_ms=duration,
+                    data=data or {},
+                    records_affected=records_affected,
+                )
+            except Exception as e:
+                import os
+                if os.getenv("ENVIRONMENT") == "production":
+                    duration = round((time.perf_counter() - t0) * 1000, 2)
+                    return OperationResult(
+                        success=False,
+                        duration_ms=duration,
+                        error=f"MongoDB live execution error: {str(e)}",
+                    )
 
         if op_name in ("find", "query"):
             collection = op.parameters.get("collection", "products")

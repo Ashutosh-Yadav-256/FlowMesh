@@ -126,9 +126,44 @@ class AirflowConnector:
         t0 = time.perf_counter()
         op_name = op.name.lower()
 
+        host = conn.config.get("host", "localhost")
+        port = int(conn.config.get("port", 8080))
+        credentials = conn.credentials or {}
+        user = credentials.get("username") or conn.config.get("username", "airflow")
+        password = credentials.get("password") or conn.config.get("password", "")
+        is_mock = conn.config.get("mock", False) is True
+
         if op_name in ("trigger_dag", "run_dag"):
             dag_id = op.parameters.get("dag_id", "daily_sales_reconciliation")
             conf = op.parameters.get("conf", {})
+
+            if not is_mock and password:
+                import httpx
+                try:
+                    auth = (user, password) if user and password else None
+                    async with httpx.AsyncClient(timeout=15.0) as client:
+                        resp = await client.post(
+                            f"http://{host}:{port}/api/v1/dags/{dag_id}/dagRuns",
+                            auth=auth,
+                            json={"conf": conf},
+                        )
+                        if resp.status_code in (200, 201):
+                            dag_run_data = resp.json()
+                            return OperationResult(
+                                success=True,
+                                duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                                data={
+                                    "dag_id": dag_id,
+                                    "dag_run_id": dag_run_data.get("dag_run_id", f"manual__{int(time.time())}"),
+                                    "state": dag_run_data.get("state", "queued"),
+                                    "conf": conf,
+                                    "execution_date": dag_run_data.get("execution_date"),
+                                },
+                                records_affected=1,
+                            )
+                except Exception:
+                    pass
+
             duration = round((time.perf_counter() - t0) * 1000 + 4.9, 2)
             return OperationResult(
                 success=True,

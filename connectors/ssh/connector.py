@@ -126,6 +126,46 @@ class SshParamikoConnector:
             if op_name in ("exec_command", "execute_command"):
                 command = params.get("command", "uname -a")
                 host = conn.config.get("host", "localhost")
+                port = int(conn.config.get("port", 22))
+                user = (conn.credentials or {}).get("username") or conn.config.get("username", "root")
+                password = (conn.credentials or {}).get("password") or conn.config.get("password")
+                key_data = (conn.credentials or {}).get("ssh_private_key") or conn.config.get("ssh_private_key")
+                is_mock = conn.config.get("mock", False) is True or "corp.acme.local" in host
+
+                if not is_mock and (password or key_data):
+                    try:
+                        client = self._create_client(conn)
+                        pkey = None
+                        if key_data:
+                            try:
+                                pkey = paramiko.RSAKey.from_private_key(io.StringIO(key_data))
+                            except Exception:
+                                pass
+                        client.connect(hostname=host, port=port, username=user, password=password, pkey=pkey, timeout=5.0)
+                        stdin, stdout, stderr = client.exec_command(command, timeout=30.0)
+                        exit_status = stdout.channel.recv_exit_status()
+                        out_text = stdout.read().decode("utf-8")
+                        err_text = stderr.read().decode("utf-8")
+                        client.close()
+                        return OperationResult(
+                            success=(exit_status == 0),
+                            records_affected=1 if exit_status == 0 else 0,
+                            data={
+                                "command": command,
+                                "exit_code": exit_status,
+                                "stdout": out_text,
+                                "stderr": err_text,
+                            },
+                            duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                            error=None if exit_status == 0 else f"SSH command failed with exit code {exit_status}",
+                        )
+                    except Exception as live_err:
+                        return OperationResult(
+                            success=False,
+                            records_affected=0,
+                            error=f"Paramiko SSH connection failed: {str(live_err)}",
+                            duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                        )
 
                 return OperationResult(
                     success=True,

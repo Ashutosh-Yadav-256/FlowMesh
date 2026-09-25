@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { fetchFromApi } from "@/lib/api";
 import {
   Activity,
   Radio,
@@ -167,13 +168,90 @@ export default function ObservabilityPage() {
   const [selectedTraceId, setSelectedTraceId] = useState("4bf92f3577b34da6a3ce929d0e0e4736");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSpan, setSelectedSpan] = useState<SpanRecord | null>(null);
+  const [traces, setTraces] = useState<Record<string, { id: string; run_id: string; wf: string; duration_ms: number; status: "OK" | "ERROR"; spans: SpanRecord[] }>>(mockTraces);
+  const [stats, setStats] = useState<{
+    p50_latency_ms: number;
+    p95_latency_ms: number;
+    p99_latency_ms: number;
+    queue_depth: number;
+    dlq_backlog: number;
+    statestore_contention_pct: number;
+    edge_agent_roundtrip_ms: number;
+    active_circuit_breakers: number;
+    recent_traces: any[];
+  } | null>(null);
 
-  const activeTrace = mockTraces[selectedTraceId] || mockTraces["4bf92f3577b34da6a3ce929d0e0e4736"];
+  useEffect(() => {
+    fetchFromApi<any>("/api/v1/observability/stats", null).then((res) => {
+      if (res) {
+        setStats(res);
+        if (res.recent_traces && res.recent_traces.length > 0) {
+          const mapped: Record<string, any> = { ...mockTraces };
+          res.recent_traces.forEach((t: any) => {
+            if (t.trace_id) {
+              mapped[t.trace_id] = {
+                id: t.trace_id,
+                run_id: t.run_id || t.trace_id.slice(0, 8),
+                wf: t.workflow_id || "Workflow Execution",
+                duration_ms: t.duration_ms || 120,
+                status: t.status || "OK",
+                spans: [],
+              };
+            }
+          });
+          setTraces(mapped);
+          setSelectedTraceId(res.recent_traces[0].trace_id);
+        }
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (selectedTraceId && traces[selectedTraceId] && (!traces[selectedTraceId].spans || traces[selectedTraceId].spans.length === 0)) {
+      fetchFromApi<any>(`/api/v1/traces/${selectedTraceId}`, null).then((tr) => {
+        if (tr && tr.spans && tr.spans.length > 0) {
+          const maxDur = tr.total_duration_ms || 1;
+          const mappedSpans: SpanRecord[] = tr.spans.map((s: any) => {
+            const widthPct = Math.max(5, Math.min(100, Math.round((s.duration_ms / maxDur) * 100)));
+            let bg = "bg-indigo-600";
+            if (s.status === "ERROR") bg = "bg-rose-600";
+            else if (s.service?.includes("nats")) bg = "bg-sky-600";
+            else if (s.service?.includes("agent")) bg = "bg-emerald-600";
+            else if (s.service?.includes("engine")) bg = "bg-slate-700";
+
+            return {
+              name: s.name,
+              service: s.service,
+              time: `${Math.round(s.duration_ms)}ms`,
+              duration_ms: s.duration_ms,
+              width: `${widthPct}%`,
+              bg,
+              status: s.status === "ERROR" ? "ERROR" : "OK",
+              attributes: s.attributes || {},
+              error: s.error_message,
+            };
+          });
+
+          setTraces((prev) => ({
+            ...prev,
+            [selectedTraceId]: {
+              ...prev[selectedTraceId],
+              duration_ms: tr.total_duration_ms,
+              status: tr.status,
+              spans: mappedSpans,
+            },
+          }));
+        }
+      });
+    }
+  }, [selectedTraceId, traces]);
+
+  const activeTrace = traces[selectedTraceId] || traces["4bf92f3577b34da6a3ce929d0e0e4736"] || Object.values(traces)[0];
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-    for (const [tid, trace] of Object.entries(mockTraces)) {
+    for (const [tid, trace] of Object.entries(traces)) {
       if (tid.includes(searchQuery.trim()) || trace.run_id.toLowerCase().includes(searchQuery.trim().toLowerCase())) {
         setSelectedTraceId(tid);
         return;
@@ -222,22 +300,22 @@ export default function ObservabilityPage() {
       <div className="grid grid-cols-4 gap-4 text-xs">
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm">
           <span className="text-slate-500 font-semibold">p95 Execution Latency</span>
-          <p className="text-2xl font-extrabold text-slate-900 mt-1">42.8ms</p>
+          <p className="text-2xl font-extrabold text-slate-900 mt-1">{stats ? `${stats.p95_latency_ms}ms` : "42.8ms"}</p>
           <span className="text-[11px] text-emerald-700 font-medium mt-1 block">Within 50ms SLO</span>
         </div>
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm">
           <span className="text-slate-500 font-semibold">NATS JetStream Queue Depth</span>
-          <p className="text-2xl font-extrabold text-slate-900 mt-1">0 msg</p>
+          <p className="text-2xl font-extrabold text-slate-900 mt-1">{stats ? `${stats.queue_depth} msg` : "0 msg"}</p>
           <span className="text-[11px] text-emerald-700 font-medium mt-1 block">Zero consumer lag</span>
         </div>
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm">
           <span className="text-slate-500 font-semibold">StateStore Lock Contention</span>
-          <p className="text-2xl font-extrabold text-slate-900 mt-1">0.02%</p>
+          <p className="text-2xl font-extrabold text-slate-900 mt-1">{stats ? `${stats.statestore_contention_pct}%` : "0.02%"}</p>
           <span className="text-[11px] text-indigo-700 font-medium mt-1 block">RediForge atomic leases</span>
         </div>
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm">
           <span className="text-slate-500 font-semibold">Edge Agent Roundtrip</span>
-          <p className="text-2xl font-extrabold text-slate-900 mt-1">12.4ms</p>
+          <p className="text-2xl font-extrabold text-slate-900 mt-1">{stats ? `${stats.edge_agent_roundtrip_ms}ms` : "12.4ms"}</p>
           <span className="text-[11px] text-slate-500 mt-1 block">mTLS tunnel latency</span>
         </div>
       </div>
@@ -256,7 +334,7 @@ export default function ObservabilityPage() {
 
         <div className="flex items-center gap-2 text-xs">
           <span className="text-slate-500 font-medium text-[11px]">Quick Switch:</span>
-          {Object.entries(mockTraces).map(([tid, trace]) => (
+          {Object.entries(traces).map(([tid, trace]) => (
             <button
               key={tid}
               onClick={() => {

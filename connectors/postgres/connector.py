@@ -304,6 +304,14 @@ class PostgresConnector:
                 finally:
                     await live_conn.close()
 
+            import os
+            if not conn.config.get("mock") and conn.config.get("host") and os.getenv("ENVIRONMENT") == "production":
+                return OperationResult(
+                    success=False,
+                    duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                    error=f"PostgreSQL connection to {conn.config.get('host')}:{conn.config.get('port', 5432)} failed. Check host reachability, SSL settings, and credentials.",
+                )
+
             duration = round((time.perf_counter() - t0) * 1000 + 4.8, 2)
             mock_rows = [
                 {"id": "ord_1001", "customer_id": "cust_482", "total_cents": 12500, "status": "CONFIRMED"},
@@ -344,6 +352,14 @@ class PostgresConnector:
                 finally:
                     await live_conn.close()
 
+            import os
+            if not conn.config.get("mock") and conn.config.get("host") and os.getenv("ENVIRONMENT") == "production":
+                return OperationResult(
+                    success=False,
+                    duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                    error=f"PostgreSQL connection to {conn.config.get('host')}:{conn.config.get('port', 5432)} failed for insert.",
+                )
+
             duration = round((time.perf_counter() - t0) * 1000 + 6.2, 2)
             return OperationResult(
                 success=True,
@@ -353,6 +369,33 @@ class PostgresConnector:
             )
 
         elif op_name in ("update", "delete"):
+            if live_conn:
+                try:
+                    sql = op.parameters.get("sql", "")
+                    params = op.parameters.get("params", [])
+                    args = params if isinstance(params, list) else list(params.values()) if isinstance(params, dict) else []
+                    status_tag = await live_conn.execute(sql, *args)
+                    duration = round((time.perf_counter() - t0) * 1000, 2)
+                    return OperationResult(
+                        success=True,
+                        duration_ms=duration,
+                        data={"operation": op_name, "status": "completed", "tag": status_tag, "engine": "live_asyncpg"},
+                        records_affected=1,
+                    )
+                except Exception as mut_err:
+                    duration = round((time.perf_counter() - t0) * 1000, 2)
+                    return OperationResult(success=False, duration_ms=duration, error=str(mut_err))
+                finally:
+                    await live_conn.close()
+
+            import os
+            if not conn.config.get("mock") and conn.config.get("host") and os.getenv("ENVIRONMENT") == "production":
+                return OperationResult(
+                    success=False,
+                    duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                    error=f"PostgreSQL connection to {conn.config.get('host')}:{conn.config.get('port', 5432)} failed for {op_name}.",
+                )
+
             duration = round((time.perf_counter() - t0) * 1000 + 5.1, 2)
             return OperationResult(
                 success=True,

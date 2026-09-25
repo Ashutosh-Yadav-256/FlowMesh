@@ -127,12 +127,77 @@ class AzureAutomationConnector:
         params = op.parameters or {}
         op_name = op.name.lower()
 
+        cfg = connection.config or {}
+        creds = connection.credentials or {}
+        sub_id = cfg.get("subscription_id") or creds.get("subscription_id", "00000000-0000-0000-0000-000000000000")
+        rg = cfg.get("resource_group", "rg-flowmesh")
+        account_name = cfg.get("automation_account", "aa-flowmesh-prod")
+        client_id = creds.get("client_id") or cfg.get("client_id")
+        client_secret = creds.get("client_secret") or cfg.get("client_secret")
+        tenant_id = creds.get("tenant_id") or cfg.get("tenant_id")
+        is_mock = cfg.get("mock", False) is True or sub_id == "00000000-0000-0000-0000-000000000000"
+
         try:
             if op_name == "start_runbook":
                 runbook_name = params.get("runbook_name", "Patch-WindowsFleet")
                 runbook_params = params.get("parameters", {})
                 run_on = params.get("run_on", "DefaultCloudWorker")
                 job_id = f"job-{uuid.uuid4().hex[:8]}"
+
+                if not is_mock and client_id and client_secret and tenant_id:
+                    import httpx
+                    try:
+                        async with httpx.AsyncClient(timeout=20.0) as client:
+                            token_resp = await client.post(
+                                f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token",
+                                data={
+                                    "grant_type": "client_credentials",
+                                    "client_id": client_id,
+                                    "client_secret": client_secret,
+                                    "scope": "https://management.azure.com/.default",
+                                },
+                            )
+                            if token_resp.is_success:
+                                token = token_resp.json().get("access_token")
+                                arm_url = f"https://management.azure.com/subscriptions/{sub_id}/resourceGroups/{rg}/providers/Microsoft.Automation/automationAccounts/{account_name}/jobs/{job_id}?api-version=2019-06-01"
+                                arm_resp = await client.put(
+                                    arm_url,
+                                    headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                                    json={
+                                        "properties": {
+                                            "runbook": {"name": runbook_name},
+                                            "parameters": runbook_params,
+                                            "runOn": run_on if run_on != "DefaultCloudWorker" else None,
+                                        }
+                                    },
+                                )
+                                if arm_resp.status_code in (200, 201):
+                                    arm_data = arm_resp.json()
+                                    return OperationResult(
+                                        success=True,
+                                        duration_ms=(time.perf_counter() - t0) * 1000,
+                                        data={
+                                            "job_id": arm_data.get("name", job_id),
+                                            "runbook_name": runbook_name,
+                                            "status": arm_data.get("properties", {}).get("status", "Running"),
+                                            "run_on": run_on,
+                                            "parameters": runbook_params,
+                                            "azure_resource_id": arm_data.get("id"),
+                                        },
+                                        records_affected=1,
+                                    )
+                                else:
+                                    return OperationResult(
+                                        success=False,
+                                        duration_ms=(time.perf_counter() - t0) * 1000,
+                                        error=f"Azure ARM Job dispatch failed: HTTP {arm_resp.status_code}: {arm_resp.text[:200]}",
+                                    )
+                    except Exception as live_err:
+                        return OperationResult(
+                            success=False,
+                            duration_ms=(time.perf_counter() - t0) * 1000,
+                            error=f"Azure Automation connection failed: {str(live_err)}",
+                        )
 
                 data = {
                     "job_id": job_id,

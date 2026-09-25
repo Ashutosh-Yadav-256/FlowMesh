@@ -43,7 +43,7 @@ class StripeConnector(BaseConnector):
         return str(api_key).strip()
 
     def _is_mock(self, conn: ConnectionSpec) -> bool:
-        return conn.config.get("mock", True) or self._get_api_key(conn).startswith("sk_test_mock")
+        return conn.config.get("mock", False) is True or self._get_api_key(conn).startswith("sk_test_mock")
 
     async def ping_connection(self, conn: ConnectionSpec) -> None:
         if self._is_mock(conn):
