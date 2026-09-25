@@ -1,6 +1,6 @@
 [
   {
-    "id": "conn_rest_2e35ad",
+    "id": "conn_rest_e45a80",
     "tenant_id": "tenant_acme",
     "entity_type": "connection",
     "title": "Validation Test Conn (REST)",
@@ -19,7 +19,7 @@
       },
       "type": "rest"
     },
-    "created_at": "2026-09-24T11:58:24.231580",
+    "created_at": "2026-09-25T13:10:49.739261",
     "updated_at": null
   },
   {
@@ -45,7 +45,7 @@
       },
       "type": "postgres"
     },
-    "created_at": "2026-09-24T11:58:01.561407",
+    "created_at": "2026-09-25T13:10:28.868136",
     "updated_at": null
   },
   {
@@ -70,7 +70,7 @@
       },
       "type": "rediforge"
     },
-    "created_at": "2026-09-24T11:58:01.561407",
+    "created_at": "2026-09-25T13:10:28.868136",
     "updated_at": null
   },
   {
@@ -94,7 +94,7 @@
       },
       "type": "rest"
     },
-    "created_at": "2026-09-24T11:58:01.561407",
+    "created_at": "2026-09-25T13:10:28.868136",
     "updated_at": null
   },
   {
@@ -119,7 +119,7 @@
       },
       "type": "sap"
     },
-    "created_at": "2026-09-24T11:58:01.561407",
+    "created_at": "2026-09-25T13:10:28.868136",
     "updated_at": null
   },
   {
@@ -143,11 +143,11 @@
       },
       "type": "webhook"
     },
-    "created_at": "2026-09-24T11:58:01.561407",
+    "created_at": "2026-09-25T13:10:28.868136",
     "updated_at": null
   },
   {
-    "id": "wf_34d94782",
+    "id": "wf_466075f6",
     "tenant_id": "tenant_acme",
     "entity_type": "workflow",
     "title": "API Approval Pipeline",
@@ -167,11 +167,11 @@
       "version": 2,
       "trigger_type": "webhook"
     },
-    "created_at": "2026-09-24T11:58:10.114549",
+    "created_at": "2026-09-25T13:10:36.100073",
     "updated_at": null
   },
   {
-    "id": "wf_632b4a5c",
+    "id": "wf_27a02557",
     "tenant_id": "tenant_acme",
     "entity_type": "workflow",
     "title": "Extended Nodes Pipeline",
@@ -193,11 +193,11 @@
       "version": 1,
       "trigger_type": "event"
     },
-    "created_at": "2026-09-24T11:58:09.943882",
+    "created_at": "2026-09-25T13:10:35.989602",
     "updated_at": null
   },
   {
-    "id": "wf_5ff0a23f",
+    "id": "wf_6ae1d8b6",
     "tenant_id": "tenant_acme",
     "entity_type": "workflow",
     "title": "Sensitive Export DAG",
@@ -217,11 +217,11 @@
       "version": 1,
       "trigger_type": "webhook"
     },
-    "created_at": "2026-09-24T11:58:09.851184",
+    "created_at": "2026-09-25T13:10:35.915553",
     "updated_at": null
   },
   {
-    "id": "wf_be200ff9",
+    "id": "wf_29f5198c",
     "tenant_id": "tenant_acme",
     "entity_type": "workflow",
     "title": "Expense Approval DAG",
@@ -242,7 +242,7 @@
       "version": 1,
       "trigger_type": "webhook"
     },
-    "created_at": "2026-09-24T11:58:09.711577",
+    "created_at": "2026-09-25T13:10:35.870279",
     "updated_at": null
   },
   {
@@ -268,7 +268,7 @@
       "version": 4,
       "trigger_type": "webhook"
     },
-    "created_at": "2026-09-24T11:58:01.561407",
+    "created_at": "2026-09-25T13:10:28.868136",
     "updated_at": null
   },
   {
@@ -293,7 +293,7 @@
       "version": 1,
       "trigger_type": "webhook"
     },
-    "created_at": "2026-09-24T11:58:01.561407",
+    "created_at": "2026-09-25T13:10:28.868136",
     "updated_at": null
   },
   {
@@ -317,36 +317,36 @@
       "version": 2,
       "trigger_type": "event"
     },
-    "created_at": "2026-09-24T11:58:01.561407",
+    "created_at": "2026-09-25T13:10:28.868136",
     "updated_at": null
   },
   {
-    "id": "RUN-API-APPR-5BCD8C",
+    "id": "RUN-API-APPR-0327DE",
     "tenant_id": "tenant_acme",
     "entity_type": "run",
-    "title": "RUN-API-APPR-5BCD8C (wf_34d94782)",
-    "description": "Status: SUCCESS | Duration: 0.021s | Trigger: webhook",
+    "title": "RUN-API-APPR-0327DE (wf_466075f6)",
+    "description": "Status: SUCCESS | Duration: 0.008s | Trigger: webhook",
     "tags": [
       "SUCCESS",
-      "wf_34d94782",
+      "wf_466075f6",
       "webhook",
       "run"
     ],
     "status": "SUCCESS",
     "url": "/runs",
     "payload": {
-      "workflow_id": "wf_34d94782",
-      "trace_id": "251feabd65f54dbd8b5937762b28b6bb"
+      "workflow_id": "wf_466075f6",
+      "trace_id": "0520d5700c364468938c5ca3816cdb49"
     },
-    "created_at": "2026-09-24T11:58:10.174677",
+    "created_at": "2026-09-25T13:10:36.122349",
     "updated_at": null
   },
   {
-    "id": "RUN-EXT-77191B",
+    "id": "RUN-EXT-FD1C77",
     "tenant_id": "tenant_acme",
     "entity_type": "run",
-    "title": "RUN-EXT-77191B (wf_order_processing)",
-    "description": "Status: SUCCESS | Duration: 0.102s | Trigger: webhook",
+    "title": "RUN-EXT-FD1C77 (wf_order_processing)",
+    "description": "Status: SUCCESS | Duration: 0.083s | Trigger: webhook",
     "tags": [
       "SUCCESS",
       "wf_order_processing",
@@ -357,51 +357,51 @@
     "url": "/runs",
     "payload": {
       "workflow_id": "wf_order_processing",
-      "trace_id": "6d5efc8e174b45fd9e4862468ccae560"
+      "trace_id": "89835a1ed39a493299419107b713ebf4"
     },
-    "created_at": "2026-09-24T11:58:09.950146",
+    "created_at": "2026-09-25T13:10:35.989602",
     "updated_at": null
   },
   {
-    "id": "RUN-REJ-377628",
+    "id": "RUN-REJ-58CE1D",
     "tenant_id": "tenant_acme",
     "entity_type": "run",
-    "title": "RUN-REJ-377628 (wf_5ff0a23f)",
-    "description": "Status: REJECTED | Duration: 0.02s | Trigger: webhook",
+    "title": "RUN-REJ-58CE1D (wf_6ae1d8b6)",
+    "description": "Status: REJECTED | Duration: 0.007s | Trigger: webhook",
     "tags": [
       "REJECTED",
-      "wf_5ff0a23f",
+      "wf_6ae1d8b6",
       "webhook",
       "run"
     ],
     "status": "REJECTED",
     "url": "/runs",
     "payload": {
-      "workflow_id": "wf_5ff0a23f",
-      "trace_id": "da9065811bc344b5ae3c993998764fb7"
+      "workflow_id": "wf_6ae1d8b6",
+      "trace_id": "7d300e774af84d27862afe61e9d1464a"
     },
-    "created_at": "2026-09-24T11:58:09.855179",
+    "created_at": "2026-09-25T13:10:35.917160",
     "updated_at": null
   },
   {
-    "id": "RUN-APPR-8954D7",
+    "id": "RUN-APPR-914618",
     "tenant_id": "tenant_acme",
     "entity_type": "run",
-    "title": "RUN-APPR-8954D7 (wf_be200ff9)",
-    "description": "Status: SUCCESS | Duration: 0.033s | Trigger: webhook",
+    "title": "RUN-APPR-914618 (wf_29f5198c)",
+    "description": "Status: SUCCESS | Duration: 0.011s | Trigger: webhook",
     "tags": [
       "SUCCESS",
-      "wf_be200ff9",
+      "wf_29f5198c",
       "webhook",
       "run"
     ],
     "status": "SUCCESS",
     "url": "/runs",
     "payload": {
-      "workflow_id": "wf_be200ff9",
-      "trace_id": "9e20a1739aad44ae8926d6fa34da90ef"
+      "workflow_id": "wf_29f5198c",
+      "trace_id": "b8855f26d9ed49ee9fa0c0e1a5308a09"
     },
-    "created_at": "2026-09-24T11:58:09.716576",
+    "created_at": "2026-09-25T13:10:35.872279",
     "updated_at": null
   },
   {
@@ -422,7 +422,7 @@
       "workflow_id": "wf_order_processing",
       "trace_id": "8cf92f3577b34da6a3ce929d0e0e9981"
     },
-    "created_at": "2026-09-24T11:58:01.561407",
+    "created_at": "2026-09-25T13:10:28.868136",
     "updated_at": null
   },
   {
@@ -443,7 +443,7 @@
       "workflow_id": "wf_order_processing",
       "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
     },
-    "created_at": "2026-09-24T11:58:01.561407",
+    "created_at": "2026-09-25T13:10:28.868136",
     "updated_at": null
   },
   {

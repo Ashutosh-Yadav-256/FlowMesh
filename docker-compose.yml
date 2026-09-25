@@ -54,6 +54,26 @@ services:
     networks:
       - flowmesh-network
 
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: flowmesh-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-flowmesh}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-flowmesh_secure_password}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - flowmesh-network
+
   api:
     build:
       context: .
@@ -161,5 +181,6 @@ volumes:
   postgres-data:
   nats-data:
   redis-data:
+  rabbitmq-data:
   prometheus-data:
   grafana-data:

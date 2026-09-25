@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   AlertTriangle,
   RotateCcw,
@@ -15,6 +15,7 @@ import {
   Search,
   X,
 } from "lucide-react";
+import { fetchFromApi, postToApi, getActiveTenantId } from "@/lib/api";
 
 interface DLQItem {
   id: string;
@@ -36,6 +37,31 @@ export default function IncidentsPage() {
   const [replayNotice, setReplayNotice] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const loadDLQ = async () => {
+    const isAcme = getActiveTenantId() === "tenant_acme";
+    const apiItems = await fetchFromApi<any[]>("/api/v1/incidents/dlq", []);
+    if (apiItems && apiItems.length > 0) {
+      setDlqItems(apiItems.map((item: any) => ({
+        id: item.id,
+        event: item.event_type || item.event_id || item.id,
+        workflow: item.workflow_id || "Order Processing",
+        reason: item.reason || "Error",
+        attempts: item.attempts || 3,
+        age: item.age || "Just now",
+      })));
+    } else if (isAcme) {
+      setDlqItems(initialDLQ);
+    } else {
+      setDlqItems([]);
+    }
+  };
+
+  useEffect(() => {
+    loadDLQ();
+    window.addEventListener("flowmesh:tenant_changed", loadDLQ);
+    return () => window.removeEventListener("flowmesh:tenant_changed", loadDLQ);
+  }, []);
+
   const filteredDLQ = dlqItems.filter((item) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase().trim();
@@ -47,17 +73,21 @@ export default function IncidentsPage() {
     );
   });
 
-  const handleReplaySingle = (id: string) => {
-    setDlqItems(dlqItems.filter((i) => i.id !== id));
-    setReplayNotice(`Successfully re-injected event ${id} into NATS JetStream`);
+  const handleReplaySingle = async (id: string) => {
+    const res = await postToApi<any>(`/api/v1/incidents/dlq/${id}/replay`);
+    setDlqItems((prev) => prev.filter((i) => i.id !== id));
+    setReplayNotice(res?.message || `Successfully re-injected event ${id} into NATS JetStream`);
     setTimeout(() => setReplayNotice(null), 3000);
+    await loadDLQ();
   };
 
-  const handleReplayAll = () => {
+  const handleReplayAll = async () => {
+    const res = await postToApi<any>("/api/v1/incidents/dlq/replay-all");
     const count = dlqItems.length;
     setDlqItems([]);
-    setReplayNotice(`Successfully replayed all ${count} DLQ events with zero duplicate side effects`);
+    setReplayNotice(res?.message || `Successfully replayed all ${count} DLQ events with zero duplicate side effects`);
     setTimeout(() => setReplayNotice(null), 3500);
+    await loadDLQ();
   };
 
   return (

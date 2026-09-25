@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Terminal, ExternalLink, Command } from "lucide-react";
+import { Search, Terminal, ExternalLink, Command, Menu } from "lucide-react";
 import { SearchModal } from "./SearchModal";
 
 export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const swaggerUrl = process.env.NEXT_PUBLIC_API_URL
+    ? `${process.env.NEXT_PUBLIC_API_URL}/docs`
+    : "http://localhost:8000/docs";
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -18,9 +21,22 @@ export function Header() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const handleToggleMobileMenu = () => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("flowmesh:toggle_sidebar"));
+    }
+  };
+
   return (
     <>
-      <header className="h-16 bg-[#FAF8F5]/95 backdrop-blur-md border-b border-[#D5CABE] flex items-center justify-between gap-4 px-6 lg:px-8 sticky top-0 z-30 ml-64 shadow-sm">
+      <header className="h-16 bg-[#FAF8F5]/95 backdrop-blur-md border-b border-[#D5CABE] flex items-center justify-between gap-3 px-4 lg:px-8 sticky top-0 z-30 lg:ml-64 ml-0 shadow-sm">
+        <button
+          onClick={handleToggleMobileMenu}
+          className="lg:hidden p-2 rounded-lg text-[#7A7165] hover:text-[#1B1B1B] hover:bg-[#F3EFEA] border border-[#D5CABE]"
+          title="Toggle Navigation Menu"
+        >
+          <Menu className="w-4 h-4" />
+        </button>
 
         <div className="flex items-center flex-1 max-w-sm lg:max-w-md min-w-0">
           <div
@@ -63,7 +79,7 @@ export function Header() {
           </div>
 
           <a
-            href="http://localhost:8000/docs"
+            href={swaggerUrl}
             target="_blank"
             rel="noreferrer"
             className="hidden md:flex items-center gap-1.5 text-xs text-[#4F4F4F] hover:text-[#1B1B1B] transition-colors px-2.5 py-1.5 rounded-lg border border-[#D5CABE] hover:bg-[#F3EFEA] bg-[#FAF8F5] whitespace-nowrap shrink-0"

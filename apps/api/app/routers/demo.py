@@ -243,6 +243,18 @@ async def seed_demo_data(
     auth: CurrentAuth,
 ) -> DemoActionResponse:
     """One-click seed for client demonstrations, pitches, and walkthroughs."""
+    from app.config import settings
+    if settings.environment == "production":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Demo seeding operations are disabled in production.",
+        )
+    if auth.role != "owner":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Role '{auth.role}' cannot seed demo workspace data. Only Organization Owners can perform this action.",
+        )
+
     conn_repo = ConnectionRepository(db, auth.tenant_id)
     secret_repo = ConnectionSecretRepository(db, auth.tenant_id)
     wf_repo = WorkflowRepository(db, auth.tenant_id)
@@ -404,6 +416,18 @@ async def reset_demo_data(
     auth: CurrentAuth,
 ) -> DemoActionResponse:
     """Clears all records for the current active tenant, leaving a 100% clean production slate."""
+    from app.config import settings
+    if settings.environment == "production":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Demo reset operations are strictly forbidden in production.",
+        )
+    if auth.role != "owner":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Role '{auth.role}' cannot reset workspace data. Only Organization Owners can perform this action.",
+        )
+
     conn_repo = ConnectionRepository(db, auth.tenant_id)
     secret_repo = ConnectionSecretRepository(db, auth.tenant_id)
     wf_repo = WorkflowRepository(db, auth.tenant_id)

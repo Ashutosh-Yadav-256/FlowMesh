@@ -8,7 +8,7 @@ from typing import List, Optional, Annotated
 from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
 
-from app.dependencies import CurrentAuth
+from app.dependencies import CurrentAuth, enforce_rbac
 from flowmesh_events.event_bus import event_bus
 from app.pagination import PaginationParams, paginate_items
 
@@ -41,6 +41,7 @@ async def list_events(
     response: Response,
 ) -> List[EventLogItem]:
     """List event stream processed through NATS JetStream router."""
+    enforce_rbac(auth, "event", "read")
     bus_events = event_bus.list_events(auth.tenant_id)
     mapped = [
         EventLogItem(

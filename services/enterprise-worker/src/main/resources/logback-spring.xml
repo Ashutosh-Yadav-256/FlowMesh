@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration scan="true" scanPeriod="30 seconds">
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
     <property name="LOG_PATH" value="${LOG_PATH:-logs}"/>
     <property name="SERVICE_NAME" value="flowmesh-enterprise-worker"/>
 
@@ -94,10 +95,9 @@
     <logger name="org.springframework.security" level="INFO" />
 
     <!-- Environment-Specific Profiles -->
-    <springProfile name="dev,local,default">
+    <springProfile name="dev,local,default,test">
         <root level="INFO">
             <appender-ref ref="CONSOLE" />
-            <appender-ref ref="ASYNC_FILE" />
         </root>
     </springProfile>
 

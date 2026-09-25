@@ -25,10 +25,13 @@ import {
   HelpCircle,
   Layers,
   Scale,
+  Server,
+  X,
 } from "lucide-react";
 
 const navItems = [
   { name: "Overview", href: "/", icon: LayoutDashboard },
+  { name: "Enterprise Console", href: "/enterprise", icon: Server, badge: "Spring Boot" },
   { name: "Connections", href: "/connections", icon: Network },
   { name: "Workflows", href: "/workflows", icon: Workflow },
   { name: "Runs", href: "/runs", icon: PlayCircle },
@@ -71,13 +74,24 @@ export function Sidebar() {
   const [activeTenant, setActiveTenant] = useState("tenant_acme");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     setActiveTenant(getActiveTenantId());
     const handleTenantChanged = () => setActiveTenant(getActiveTenantId());
+    const handleToggle = () => setMobileOpen((prev) => !prev);
+
     window.addEventListener("flowmesh:tenant_changed", handleTenantChanged);
-    return () => window.removeEventListener("flowmesh:tenant_changed", handleTenantChanged);
+    window.addEventListener("flowmesh:toggle_sidebar", handleToggle);
+    return () => {
+      window.removeEventListener("flowmesh:tenant_changed", handleTenantChanged);
+      window.removeEventListener("flowmesh:toggle_sidebar", handleToggle);
+    };
   }, []);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   const handleSelectWorkspace = (tenantId: string) => {
     if (tenantId === activeTenant) {
@@ -109,13 +123,30 @@ export function Sidebar() {
   const currentWs = workspaces.find((w) => w.id === activeTenant) || workspaces[0];
 
   return (
-    <aside className="w-64 bg-[#FAF8F5] border-r border-[#D5CABE] flex flex-col h-screen fixed left-0 top-0 z-40 select-none shadow-sm">
-
-      <div className="h-16 flex items-center px-6 border-b border-[#D5CABE] justify-between">
-        <Link href="/" className="group block">
-          <FlowMeshBrand />
-        </Link>
-      </div>
+    <>
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+      <aside
+        className={`w-64 bg-[#FAF8F5] border-r border-[#D5CABE] flex flex-col h-screen fixed left-0 top-0 z-50 select-none shadow-sm transition-transform duration-200 lg:translate-x-0 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }`}
+      >
+        <div className="h-16 flex items-center px-6 border-b border-[#D5CABE] justify-between">
+          <Link href="/" className="group block" onClick={() => setMobileOpen(false)}>
+            <FlowMeshBrand />
+          </Link>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="lg:hidden p-1.5 rounded-lg text-[#7A7165] hover:text-[#1B1B1B] hover:bg-[#F3EFEA]"
+            title="Close Menu"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
       <div className="px-3 py-2.5 border-b border-[#D5CABE] relative">
         <button
@@ -305,5 +336,6 @@ export function Sidebar() {
         })}
       </div>
     </aside>
+    </>
   );
 }

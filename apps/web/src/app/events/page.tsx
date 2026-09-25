@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Radio, Search, Filter, CheckCircle2, AlertCircle, RefreshCw, X } from "lucide-react";
+import { fetchFromApi, getActiveTenantId } from "@/lib/api";
 
 interface EventItem {
   id: string;
@@ -12,7 +13,7 @@ interface EventItem {
   payloadRef: string;
 }
 
-const eventsList: EventItem[] = [
+const defaultEventsList: EventItem[] = [
   { id: "evt_98231", type: "order.created", source: "SAP ERP", status: "PROCESSED", timestamp: "22:31:02", payloadRef: "ref://blob/98231" },
   { id: "evt_98232", type: "customer.update", source: "PostgreSQL", status: "PROCESSED", timestamp: "22:30:14", payloadRef: "ref://blob/98232" },
   { id: "evt_98233", type: "order.created", source: "SAP ERP", status: "FAILED", timestamp: "22:21:00", payloadRef: "ref://blob/98233" },
@@ -21,10 +22,36 @@ const eventsList: EventItem[] = [
 ];
 
 export default function EventsPage() {
+  const [events, setEvents] = useState<EventItem[]>(defaultEventsList);
   const [filterType, setFilterType] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredEvents = eventsList.filter((e) => {
+  const loadEvents = async () => {
+    const isAcme = getActiveTenantId() === "tenant_acme";
+    const apiEvents = await fetchFromApi<any[]>("/api/v1/events", []);
+    if (apiEvents && apiEvents.length > 0) {
+      setEvents(apiEvents.map((e: any) => ({
+        id: e.id,
+        type: e.type,
+        source: e.source,
+        status: e.status as "PROCESSED" | "FAILED",
+        timestamp: e.timestamp?.includes("T") ? e.timestamp.split("T")[1].substring(0, 8) : e.timestamp,
+        payloadRef: e.payload_ref || e.payloadRef || `ref://blob/${e.id}`,
+      })));
+    } else if (isAcme) {
+      setEvents(defaultEventsList);
+    } else {
+      setEvents([]);
+    }
+  };
+
+  useEffect(() => {
+    loadEvents();
+    window.addEventListener("flowmesh:tenant_changed", loadEvents);
+    return () => window.removeEventListener("flowmesh:tenant_changed", loadEvents);
+  }, []);
+
+  const filteredEvents = events.filter((e) => {
     if (filterType !== "all" && e.type !== filterType) return false;
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase().trim();

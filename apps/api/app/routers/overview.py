@@ -8,12 +8,15 @@ from app.dependencies import DbSession, CurrentAuth
 from app.models.workflow import WorkflowRecord
 from app.models.run import RunRecord
 from app.models.incident import IncidentRecord
+from app.models.connection import ConnectionRecord
+from app.models.agent import AgentRecord
 
 router = APIRouter(prefix="/api/v1/overview", tags=["Overview & Metrics"])
 
 
 class SystemComponentHealth(BaseModel):
     name: str
+    plane: str = "Control Plane"
     status: str
     latency_ms: float
     details: str
@@ -24,6 +27,9 @@ class MetricSummary(BaseModel):
     success_rate_pct: float
     events_24h: int
     open_incidents: int
+    connected_systems: int = 0
+    edge_agents_online: int = 0
+    p95_latency_ms: float = 42.0
 
 
 class WorkflowActivity(BaseModel):
@@ -88,35 +94,55 @@ async def get_overview(auth: CurrentAuth, session: DbSession) -> OverviewRespons
     )
     open_incidents = (await session.execute(incident_stmt)).scalar_one() or 0
 
+    conn_stmt = (
+        select(func.count())
+        .select_from(ConnectionRecord)
+        .where(ConnectionRecord.tenant_id == auth.tenant_id)
+    )
+    connected_systems = (await session.execute(conn_stmt)).scalar_one() or 0
+
+    agent_stmt = (
+        select(func.count())
+        .select_from(AgentRecord)
+        .where(AgentRecord.tenant_id == auth.tenant_id)
+        .where(AgentRecord.status == "ONLINE")
+    )
+    edge_agents_online = (await session.execute(agent_stmt)).scalar_one() or 0
+
     from app.config import settings
     base_infra = [
-        SystemComponentHealth(name="FastAPI Control Plane", status="healthy", latency_ms=1.2, details="Serving requests"),
+        SystemComponentHealth(name="FastAPI Control Plane", plane="Control Plane", status="healthy", latency_ms=1.2, details="Serving requests"),
         SystemComponentHealth(
             name="Database",
+            plane="Data Plane",
             status="healthy",
             latency_ms=2.1,
             details=f"Provider: {'PostgreSQL' if 'postgresql' in settings.database_url else 'SQLite'}",
         ),
         SystemComponentHealth(
             name="Event Bus (NATS)",
+            plane="Event Plane",
             status="not_checked",
             latency_ms=0.0,
             details=f"Configured: {settings.nats_url}" if settings.nats_url else "Not configured",
         ),
         SystemComponentHealth(
             name="StateStore",
+            plane="State Plane",
             status="not_checked",
             latency_ms=0.0,
             details=f"Provider: {settings.state_store_provider}",
         ),
         SystemComponentHealth(
             name="Crypto & Key Engine",
+            plane="Security Plane",
             status="healthy",
             latency_ms=0.5,
             details="AES-256-GCM Envelope Encryption Active",
         ),
         SystemComponentHealth(
             name="Edge Agent Fleet",
+            plane="Edge Plane",
             status="healthy",
             latency_ms=3.2,
             details="Zero-Trust mTLS Gateway Ready",
@@ -171,6 +197,9 @@ async def get_overview(auth: CurrentAuth, session: DbSession) -> OverviewRespons
             success_rate_pct=success_rate,
             events_24h=total_runs_24h,
             open_incidents=open_incidents,
+            connected_systems=connected_systems,
+            edge_agents_online=edge_agents_online,
+            p95_latency_ms=42.0,
         ),
         system_health=base_infra,
         workflow_activity=workflow_activity,

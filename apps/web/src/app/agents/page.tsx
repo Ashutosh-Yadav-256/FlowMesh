@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Cpu,
   Server,
@@ -16,6 +16,7 @@ import {
   FileCode,
   Lock,
 } from "lucide-react";
+import { fetchFromApi, postToApi, getActiveTenantId } from "@/lib/api";
 
 interface AgentItem {
   id: string;
@@ -30,18 +31,62 @@ interface AgentItem {
   certExpiresDays: number;
 }
 
-const agentsList: AgentItem[] = [
+const defaultAgentsList: AgentItem[] = [
   { id: "agent-prod-01", name: "production-01", version: "v0.4.2", status: "healthy", connectorsCount: 8, cpu: 12.4, memory: 31.2, queue: 14, heartbeatSec: 3, certExpiresDays: 82 },
   { id: "agent-wh-01", name: "warehouse-01", version: "v0.4.2", status: "healthy", connectorsCount: 3, cpu: 8.1, memory: 22.5, queue: 2, heartbeatSec: 4, certExpiresDays: 82 },
   { id: "agent-stg-01", name: "staging-01", version: "v0.4.2", status: "offline", connectorsCount: 5, cpu: 0, memory: 0, queue: 0, heartbeatSec: 1420, certExpiresDays: 45 },
 ];
 
 export default function AgentsPage() {
-  const [selectedAgent, setSelectedAgent] = useState<AgentItem>(agentsList[0]);
+  const [agents, setAgents] = useState<AgentItem[]>(defaultAgentsList);
+  const [selectedAgent, setSelectedAgent] = useState<AgentItem>(defaultAgentsList[0]);
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [curlCommand, setCurlCommand] = useState(
+    "curl -fsSL https://install.flowmesh.dev | sh -s -- --token flm_enroll_live_acme_8921"
+  );
 
-  const curlCommand = "curl -fsSL https://install.flowmesh.dev | sh -s -- --token flm_enroll_live_acme_8921";
+  const loadAgents = async () => {
+    const isAcme = getActiveTenantId() === "tenant_acme";
+    const apiAgents = await fetchFromApi<any[]>("/api/v1/agents", []);
+    if (apiAgents && apiAgents.length > 0) {
+      const mapped = apiAgents.map((a: any) => ({
+        id: a.id,
+        name: a.name,
+        version: a.version,
+        status: a.status,
+        connectorsCount: a.connectors?.length || 0,
+        cpu: a.cpu_percent,
+        memory: a.memory_percent,
+        queue: a.queue_depth,
+        heartbeatSec: a.last_heartbeat_seconds_ago,
+        certExpiresDays: a.cert_expires_days || 82,
+      }));
+      setAgents(mapped);
+      if (!selectedAgent || !mapped.some((m: any) => m.id === selectedAgent.id)) {
+        setSelectedAgent(mapped[0]);
+      }
+    } else if (isAcme) {
+      setAgents(defaultAgentsList);
+      setSelectedAgent(defaultAgentsList[0]);
+    } else {
+      setAgents([]);
+    }
+  };
+
+  useEffect(() => {
+    loadAgents();
+    window.addEventListener("flowmesh:tenant_changed", loadAgents);
+    return () => window.removeEventListener("flowmesh:tenant_changed", loadAgents);
+  }, []);
+
+  const handleOpenEnrollModal = async () => {
+    setShowEnrollModal(true);
+    const res = await postToApi<any>("/api/v1/agents/enrollment-token");
+    if (res?.install_command) {
+      setCurlCommand(res.install_command);
+    }
+  };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(curlCommand);
@@ -66,7 +111,7 @@ export default function AgentsPage() {
         </div>
 
         <button
-          onClick={() => setShowEnrollModal(true)}
+          onClick={handleOpenEnrollModal}
           className="flex items-center gap-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm"
         >
           <Server className="w-4 h-4" />
@@ -79,7 +124,7 @@ export default function AgentsPage() {
         <div className="lg:col-span-2 rounded-xl bg-white border border-slate-200 overflow-hidden shadow-sm">
           <div className="p-4 border-b border-slate-100 flex items-center justify-between text-xs">
             <span className="font-bold text-slate-800 uppercase text-[11px]">Registered Daemons</span>
-            <span className="text-slate-500">Showing {agentsList.length} total</span>
+            <span className="text-slate-500">Showing {agents.length} total</span>
           </div>
 
           <table className="w-full text-left text-xs">
@@ -93,8 +138,8 @@ export default function AgentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {agentsList.map((agent) => {
-                const isSelected = selectedAgent.id === agent.id;
+              {agents.map((agent) => {
+                const isSelected = selectedAgent?.id === agent.id;
                 return (
                   <tr
                     key={agent.id}

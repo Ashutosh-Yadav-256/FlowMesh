@@ -501,18 +501,26 @@ async def rotate_credentials(
         version=new_version,
         created_at=now,
     )
-    await secret_repo.create(new_sec)
 
-    await secret_repo.purge_previous_versions(connection_id, keep_version=new_version)
+    from sqlalchemy.exc import IntegrityError
+    try:
+        await secret_repo.create(new_sec)
+        await secret_repo.purge_previous_versions(connection_id, keep_version=new_version)
 
-    await audit_repo.record(
-        actor=auth.email,
-        action="connection.rotate_credentials",
-        resource=f"connections/{connection_id}",
-        result="SUCCESS",
-        metadata={"version": new_version, "connection_id": connection_id},
-    )
-    await db.commit()
+        await audit_repo.record(
+            actor=auth.email,
+            action="connection.rotate_credentials",
+            resource=f"connections/{connection_id}",
+            result="SUCCESS",
+            metadata={"version": new_version, "connection_id": connection_id},
+        )
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Concurrent credential rotation detected. Please refresh and retry.",
+        )
 
     return RotateCredentialsResponse(
         connection_id=connection_id,

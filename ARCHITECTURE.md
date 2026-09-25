@@ -556,6 +556,18 @@ For detailed step-by-step multi-region setups, cloud infrastructure (Terraform, 
 | **[ADR-0002](docs/adr/ADR-0002-no-remote-code-execution.md)** | Rejection of Arbitrary Remote Code Execution | **Accepted** | Mandates cryptographic Ed25519 payload signing and strict declarative connector schemas. |
 | **[ADR-0003](docs/adr/ADR-0003-statestore-abstraction.md)** | Generic StateStore Abstraction for Redis & RediForge | **Accepted** | Decouples orchestration engine from concrete cache backends; enables pluggable high-perf state. |
 | **[ADR-0004](docs/adr/ADR-0004-immutable-workflow-versions.md)** | Immutable Workflow Versioning and Pinning | **Accepted** | Guarantees in-flight executions finish on their pinned version; instant zero-downtime rollbacks. |
+| **[ADR-0005](docs/adr/ADR-0005-orm-jpa-hibernate-strategy.md)** | Enterprise ORM, Jakarta Persistence 3.1 & Hibernate 6 Architecture | **Accepted** | Solves $N+1$ query problem with EntityGraph, optimistic locking via @Version, and soft deletes. |
+| **[ADR-0006](docs/adr/ADR-0006-transactional-outbox-data-platform.md)** | Transactional Outbox Pattern & Data Platform Schema Governance | **Accepted** | Eliminates dual-write anomalies, guarantees at-least-once event delivery, and enforces data contracts. |
+
+---
+
+## 14. Engineering Reference Guides
+
+- **[Enterprise ORM, JPA & Data Platform Engineering Guide](docs/guides/ORM_JPA_HIBERNATE_DATA_PLATFORM.md)**: Deep dive on Hibernate 6 session lifecycles, L1/L2 caches, dirty checking, $N+1$ query elimination, optimistic locking, and the Transactional Outbox pattern.
+- **[Requirements & System Design Specifications](docs/guides/REQUIREMENTS_SYSTEM_DESIGN.md)**: Personas, functional/non-functional requirements, C4 architecture models, state machines, and ER models.
+- **[TDD & Software Engineering Standards](docs/guides/TDD_SOFTWARE_ENGINEERING_STANDARDS.md)**: Kent Beck's Red-Green-Refactor cycle, test pyramid, Spring Boot `@DataJpaTest` slice testing, and quality gates.
+- **[Enterprise Java Systems Guide](docs/guides/JAVA_ENTERPRISE_SYSTEMS.md)**: Virtual threads, zero-lock concurrency, and performance tuning.
+- **[Enterprise Database Guide](docs/guides/ENTERPRISE_DATABASE_GUIDE.md)**: PostgreSQL, Oracle, and SQL Server multi-database integration.
 
 ---
 

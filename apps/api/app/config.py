@@ -54,7 +54,13 @@ class Settings(BaseSettings):
         return v
 
     allowed_methods: Union[List[str], str] = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-    allowed_headers: Union[List[str], str] = ["Authorization", "Content-Type", "X-Tenant-ID", "X-Request-ID"]
+    allowed_headers: Union[List[str], str] = [
+        "Authorization",
+        "Content-Type",
+        "X-Tenant-ID",
+        "X-Request-ID",
+        "X-API-Key",
+    ]
     allow_credentials: bool = True
 
     database_url: str = "sqlite+aiosqlite:///./flowmesh.db"
@@ -94,24 +100,33 @@ class Settings(BaseSettings):
 
             self.debug = True
             self.seed_demo_data = True
+        elif self.environment == "production":
+            if not self.api_secret_key or self.api_secret_key.startswith(_DEV_SECRET_PREFIX):
+                raise ValueError("SECURITY FAILURE: API_SECRET_KEY must be explicitly set with a persistent secret in production.")
+
+            if not self.encryption_master_key or self.encryption_master_key == _DEV_MASTER_KEY:
+                raise ValueError("SECURITY FAILURE: ENCRYPTION_MASTER_KEY must be explicitly configured in production to prevent encrypted credential loss across container restarts.")
+
+            if not self.agent_enrollment_secret or self.agent_enrollment_secret == _DEV_AGENT_SECRET:
+                raise ValueError("SECURITY FAILURE: AGENT_ENROLLMENT_SECRET must be explicitly set in production.")
+
+            if "sqlite" in self.database_url:
+                logger.warning("Production environment is using SQLite database (%s). PostgreSQL is strongly recommended.", self.database_url)
+
+            if "*" in self.allowed_origins:
+                logger.warning("Wildcard '*' in ALLOWED_ORIGINS enabled in production environment.")
         else:
             if not self.api_secret_key or self.api_secret_key.startswith(_DEV_SECRET_PREFIX):
                 self.api_secret_key = secrets.token_urlsafe(64)
-                logger.warning("API_SECRET_KEY was not set in production; generated secure random ephemeral key.")
+                logger.warning("API_SECRET_KEY was not set in staging; generated secure random ephemeral key.")
 
             if not self.encryption_master_key or self.encryption_master_key == _DEV_MASTER_KEY:
                 self.encryption_master_key = secrets.token_hex(32)
-                logger.warning("ENCRYPTION_MASTER_KEY was not set in production; generated secure random 256-bit key.")
+                logger.warning("ENCRYPTION_MASTER_KEY was not set in staging; generated secure random 256-bit key.")
 
             if not self.agent_enrollment_secret or self.agent_enrollment_secret == _DEV_AGENT_SECRET:
                 self.agent_enrollment_secret = secrets.token_urlsafe(32)
-                logger.warning("AGENT_ENROLLMENT_SECRET was not set in production; generated secure random token.")
-
-            if "sqlite" in self.database_url:
-                logger.warning("Production environment is using SQLite database (%s).", self.database_url)
-
-            if "*" in self.allowed_origins:
-                logger.info("Wildcard '*' in ALLOWED_ORIGINS enabled for cross-origin client access.")
+                logger.warning("AGENT_ENROLLMENT_SECRET was not set in staging; generated secure random token.")
 
         return self
 

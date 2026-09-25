@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ShieldCheck, FileText, CheckCircle2, AlertOctagon, Search, X, Filter } from "lucide-react";
+import { fetchFromApi, getActiveTenantId } from "@/lib/api";
 
 interface AuditItem {
   id: string;
@@ -13,7 +14,7 @@ interface AuditItem {
   detail: string;
 }
 
-const auditRecords: AuditItem[] = [
+const defaultAuditRecords: AuditItem[] = [
   { id: "aud_1001", time: "22:31:02", actor: "system:nats-worker", action: "workflow.execute", resource: "workflow:wf_order_processing", result: "SUCCESS", detail: "Completed Run #RUN-92831 in 2.84s" },
   { id: "aud_1002", time: "22:25:10", actor: "alex.dev@acme.corp", action: "connection.rotate_secret", resource: "connection:conn_pg_01", result: "ALLOWED", detail: "Generated AES-256-GCM v3 cipher" },
   { id: "aud_1003", time: "22:22:00", actor: "system:circuit-breaker", action: "circuit_breaker.trip", resource: "connection:conn_rest_01", result: "SUCCESS", detail: "Tripped circuit after 3 consecutive failures" },
@@ -21,10 +22,37 @@ const auditRecords: AuditItem[] = [
 ];
 
 export default function AuditPage() {
+  const [records, setRecords] = useState<AuditItem[]>(defaultAuditRecords);
   const [searchQuery, setSearchQuery] = useState("");
   const [outcomeFilter, setOutcomeFilter] = useState<"ALL" | "ALLOWED" | "DENIED" | "SUCCESS">("ALL");
 
-  const filteredRecords = auditRecords.filter((r) => {
+  const loadAudit = async () => {
+    const isAcme = getActiveTenantId() === "tenant_acme";
+    const apiRecords = await fetchFromApi<any[]>("/api/v1/audit", []);
+    if (apiRecords && apiRecords.length > 0) {
+      setRecords(apiRecords.map((r: any) => ({
+        id: r.id,
+        time: r.timestamp?.includes("T") ? r.timestamp.split("T")[1].substring(0, 8) : r.timestamp,
+        actor: r.actor,
+        action: r.action,
+        resource: r.resource,
+        result: (r.result?.toUpperCase() === "SUCCESS" || r.result?.toUpperCase() === "ALLOWED") ? r.result.toUpperCase() as any : "DENIED",
+        detail: JSON.stringify(r.metadata || {}),
+      })));
+    } else if (isAcme) {
+      setRecords(defaultAuditRecords);
+    } else {
+      setRecords([]);
+    }
+  };
+
+  useEffect(() => {
+    loadAudit();
+    window.addEventListener("flowmesh:tenant_changed", loadAudit);
+    return () => window.removeEventListener("flowmesh:tenant_changed", loadAudit);
+  }, []);
+
+  const filteredRecords = records.filter((r) => {
     if (outcomeFilter !== "ALL" && r.result !== outcomeFilter) return false;
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase().trim();

@@ -23,11 +23,13 @@ import {
   Power,
   Lock,
   Key,
+  KeyRound,
+  Trash2,
   Eye,
   EyeOff,
   Shield,
 } from "lucide-react";
-import { fetchFromApi, postToApi, getActiveTenantId } from "@/lib/api";
+import { fetchFromApi, postToApi, deleteFromApi, getActiveTenantId } from "@/lib/api";
 import { InputShake, InputShakeHandle } from "@/components/InputShake";
 
 interface ConnectionItem {
@@ -204,6 +206,10 @@ export default function ConnectionsPage() {
   const [filterMode, setFilterMode] = useState<"all" | "agent" | "cloud">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "disabled">("all");
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [rotateModalConn, setRotateModalConn] = useState<ConnectionItem | null>(null);
+  const [rotateSecret, setRotateSecret] = useState("");
+  const [rotatingSecret, setRotatingSecret] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ id: string; text: string; type: "success" | "error" } | null>(null);
 
   const filteredConnections = useMemo(() => {
@@ -329,6 +335,77 @@ export default function ConnectionsPage() {
       setTimeout(() => setFeedbackMsg(null), 3500);
     } finally {
       setActiveTestId(null);
+    }
+  };
+
+  const handleDeleteConnection = async (connId: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete connection "${connId}"? All envelope-encrypted credentials and discovery history will be purged.`)) {
+      return;
+    }
+    setDeletingId(connId);
+    try {
+      await deleteFromApi(`/api/v1/connections/${connId}`);
+      setConnections((prev) => prev.filter((c) => c.id !== connId));
+      setFeedbackMsg({
+        id: connId,
+        text: `Connection "${connId}" was successfully deleted.`,
+        type: "success",
+      });
+    } catch (err: any) {
+      setFeedbackMsg({
+        id: connId,
+        text: `Failed to delete connection: ${err.message || "Network error"}`,
+        type: "error",
+      });
+    } finally {
+      setDeletingId(null);
+      setTimeout(() => setFeedbackMsg(null), 3500);
+    }
+  };
+
+  const handleRotateCredentials = async () => {
+    if (!rotateModalConn) return;
+    if (!rotateSecret.trim()) {
+      alert("Please enter a new secret payload or password.");
+      return;
+    }
+    setRotatingSecret(true);
+    try {
+      const res = await postToApi<{ connection_id: string; status: string; new_version: number; rotated_at: string }>(
+        `/api/v1/connections/${rotateModalConn.id}/rotate-credentials`,
+        {
+          credentials: {
+            password: rotateSecret,
+            api_key: rotateSecret,
+            token: rotateSecret,
+            rotated_at: new Date().toISOString(),
+          },
+        }
+      );
+      if (res) {
+        setFeedbackMsg({
+          id: rotateModalConn.id,
+          text: `Credentials for "${rotateModalConn.name}" rotated to version ${res.new_version || "vNext"}. Older DEK destroyed.`,
+          type: "success",
+        });
+        setRotateModalConn(null);
+        setRotateSecret("");
+      } else {
+        setFeedbackMsg({
+          id: rotateModalConn.id,
+          text: "Failed to rotate credentials. Check backend logs or try again.",
+          type: "error",
+        });
+      }
+    } catch (err: any) {
+      setFeedbackMsg({
+        id: rotateModalConn.id,
+        text: `Credential rotation failed: ${err.message || "Error"}`,
+        type: "error",
+      });
+    } finally {
+      setRotatingSecret(false);
+      setTimeout(() => setFeedbackMsg(null), 4000);
     }
   };
 
@@ -1009,6 +1086,31 @@ export default function ConnectionsPage() {
                             }`}
                           >
                             Discover & Drift
+                          </button>
+                          <button
+                            onClick={() => {
+                              setRotateModalConn(conn);
+                              setRotateSecret("");
+                            }}
+                            disabled={!isEnabled}
+                            title={!isEnabled ? "Connector is disabled. Enable to rotate credentials." : "Rotate credentials (forward secrecy)"}
+                            className={`px-2 py-1 text-[11px] rounded font-medium transition-colors flex items-center gap-1 shadow-xs border ${
+                              !isEnabled
+                                ? "bg-[#F3EFEA] text-[#968676] border-[#E0D7CC] cursor-not-allowed opacity-60"
+                                : "bg-[#FAF8F5] hover:bg-[#F3EFEA] text-[#1B1B1B] border-[#D5CABE]"
+                            }`}
+                          >
+                            <KeyRound className="w-3 h-3 text-[#874436]" />
+                            Rotate
+                          </button>
+                          <button
+                            onClick={() => handleDeleteConnection(conn.id)}
+                            disabled={deletingId === conn.id}
+                            title="Permanently delete connector"
+                            className="px-2 py-1 text-[11px] rounded font-medium transition-colors flex items-center gap-1 shadow-xs border bg-[#FAF8F5] hover:bg-[#FCEAE6] text-[#A83226] border-[#EED1CB]"
+                          >
+                            <Trash2 className={`w-3 h-3 ${deletingId === conn.id ? "animate-spin" : ""}`} />
+                            {deletingId === conn.id ? "Deleting..." : "Delete"}
                           </button>
                         </div>
                       </td>
@@ -1727,6 +1829,84 @@ export default function ConnectionsPage() {
                 className="px-4 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-lg font-medium border border-slate-200 shadow-sm transition-colors"
               >
                 Close Inspector
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {rotateModalConn && (
+        <div className="fixed inset-0 z-50 bg-[#1B1B1B]/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#FAF8F5] border border-[#D5CABE] rounded-2xl shadow-xl overflow-hidden animate-fade-in">
+            <div className="p-5 border-b border-[#D5CABE] bg-[#FAF8F5] flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#F8EBE8] border border-[#EED1CB] flex items-center justify-center text-[#874436]">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-[#1B1B1B]">Rotate Credentials</h3>
+                  <p className="text-[11px] text-[#7A7165]">
+                    {rotateModalConn.name} ({rotateModalConn.id})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setRotateModalConn(null)}
+                className="text-[#968676] hover:text-[#1B1B1B] p-1 rounded-lg hover:bg-[#F3EFEA]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              <div className="p-3 bg-[#E8F5EE] border border-[#BCE3CD] rounded-xl text-[#2E6B47] space-y-1">
+                <p className="font-semibold flex items-center gap-1.5 text-xs">
+                  <ShieldCheck className="w-4 h-4 text-[#2E6B47]" />
+                  Zero-Downtime Envelope Re-encryption
+                </p>
+                <p className="text-[11px] text-[#2E6B47]/90 leading-relaxed">
+                  Submitting a new secret wraps a newly generated Data Encryption Key (DEK) and safely purges prior ciphertext versions for forward secrecy.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[#1B1B1B] font-semibold mb-1 text-xs">
+                  New Password / Secret Key / Token
+                </label>
+                <input
+                  type="password"
+                  value={rotateSecret}
+                  onChange={(e) => setRotateSecret(e.target.value)}
+                  placeholder="Enter new credential value..."
+                  className="w-full bg-[#FAF8F5] border border-[#D5CABE] rounded-lg p-2.5 text-[#1B1B1B] font-mono text-xs focus:outline-none focus:border-[#874436]"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-[#D5CABE] bg-[#F3EFEA] flex items-center justify-end gap-2.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setRotateModalConn(null)}
+                className="px-4 py-2 rounded-lg text-[#7A7165] hover:text-[#1B1B1B] font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRotateCredentials}
+                disabled={rotatingSecret || !rotateSecret.trim()}
+                className="px-4 py-2 rounded-lg bg-[#874436] hover:bg-[#6E362A] text-white font-semibold transition-colors disabled:opacity-50 flex items-center gap-1.5 shadow-xs"
+              >
+                {rotatingSecret ? (
+                  <>
+                    <RotateCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Encrypting & Rotating...</span>
+                  </>
+                ) : (
+                  <>
+                    <KeyRound className="w-3.5 h-3.5" />
+                    <span>Rotate Secret</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

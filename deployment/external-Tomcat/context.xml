@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- FlowMesh External Tomcat 10.1 Context Configuration with JNDI Resources -->
+<Context antiResourceLocking="false" privileged="true" reloadable="false">
+
+    <!-- Primary PostgreSQL JNDI DataSource -->
+    <Resource name="jdbc/FlowMeshPostgres"
+              auth="Container"
+              type="javax.sql.DataSource"
+              maxTotal="50"
+              maxIdle="15"
+              maxWaitMillis="10000"
+              username="flowmesh"
+              password="flowmesh_secure_password"
+              driverClassName="org.postgresql.Driver"
+              url="jdbc:postgresql://localhost:5432/flowmesh"
+              validationQuery="SELECT 1"
+              testOnBorrow="true"/>
+
+    <!-- Oracle ERP JNDI DataSource -->
+    <Resource name="jdbc/FlowMeshOracle"
+              auth="Container"
+              type="javax.sql.DataSource"
+              maxTotal="30"
+              maxIdle="10"
+              maxWaitMillis="10000"
+              username="flowmesh_oracle"
+              password="flowmesh_oracle_pass"
+              driverClassName="oracle.jdbc.OracleDriver"
+              url="jdbc:oracle:thin:@localhost:1521/XEPDB1"
+              validationQuery="SELECT 1 FROM DUAL"
+              testOnBorrow="true"/>
+
+    <!-- Microsoft SQL Server JNDI DataSource -->
+    <Resource name="jdbc/FlowMeshSqlServer"
+              auth="Container"
+              type="javax.sql.DataSource"
+              maxTotal="30"
+              maxIdle="10"
+              maxWaitMillis="10000"
+              username="sa"
+              password="FlowMesh_Password123!"
+              driverClassName="com.microsoft.sqlserver.jdbc.SQLServerDriver"
+              url="jdbc:sqlserver://localhost:1433;databaseName=flowmesh;encrypt=false;trustServerCertificate=true"
+              validationQuery="SELECT 1"
+              testOnBorrow="true"/>
+
+</Context>

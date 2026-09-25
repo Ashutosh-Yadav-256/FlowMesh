@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getActiveTenantId, postToApi } from "@/lib/api";
+import { getActiveTenantId, postToApi, fetchFromApi } from "@/lib/api";
 import {
   PlayCircle,
   CheckCircle2,
@@ -213,41 +213,50 @@ export default function RunsPage() {
     );
   });
 
-  useEffect(() => {
+  const loadRuns = async () => {
     const isAcme = getActiveTenantId() === "tenant_acme";
     setActiveTenant(getActiveTenantId());
-    if (isAcme) {
+    const apiRuns = await fetchFromApi<any[]>("/api/v1/runs", []);
+    if (apiRuns && apiRuns.length > 0) {
+      const mapped = apiRuns.map((r: any) => ({
+        id: r.id,
+        wf: r.workflow_name || r.workflow_id,
+        version: `v${r.version}`,
+        status: r.status as "SUCCESS" | "FAILED" | "RUNNING",
+        dur: `${r.duration_seconds}s`,
+        trigger: r.trigger_source || "Ingress Event",
+        time: new Date(r.started_at).toLocaleTimeString(),
+        traceId: r.trace_id,
+      }));
+      setRuns(mapped);
+      if (!selectedRun || !mapped.some((m: any) => m.id === selectedRun)) {
+        setSelectedRun(mapped[0].id);
+      }
+    } else if (isAcme) {
       setRuns(defaultDemoRuns);
       setSelectedRun("RUN-92831");
     } else {
       setRuns([]);
       setSelectedRun("");
     }
+  };
 
-    const handleTenantChanged = () => {
-      const currentIsAcme = getActiveTenantId() === "tenant_acme";
-      setActiveTenant(getActiveTenantId());
-      if (currentIsAcme) {
-        setRuns(defaultDemoRuns);
-        setSelectedRun("RUN-92831");
-      } else {
-        setRuns([]);
-        setSelectedRun("");
-      }
-    };
-    window.addEventListener("flowmesh:tenant_changed", handleTenantChanged);
-    return () => window.removeEventListener("flowmesh:tenant_changed", handleTenantChanged);
+  useEffect(() => {
+    loadRuns();
+    window.addEventListener("flowmesh:tenant_changed", loadRuns);
+    return () => window.removeEventListener("flowmesh:tenant_changed", loadRuns);
   }, []);
 
   const activeTrace = runTraces[selectedRun] || runTraces["RUN-92831"];
 
-  const handleReplay = () => {
+  const handleReplay = async () => {
+    if (!selectedRun) return;
     setReplaying(true);
-    setTimeout(() => {
-      setReplaying(false);
-      setReplayedNotice(true);
-      setTimeout(() => setReplayedNotice(false), 3500);
-    }, 1000);
+    await postToApi<any>(`/api/v1/runs/${selectedRun}/replay`);
+    setReplaying(false);
+    setReplayedNotice(true);
+    setTimeout(() => setReplayedNotice(false), 3500);
+    await loadRuns();
   };
 
   const openTraceModal = () => {

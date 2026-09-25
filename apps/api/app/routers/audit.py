@@ -2,7 +2,7 @@ from typing import List, Dict, Any, Annotated
 from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
 
-from app.dependencies import DbSession, CurrentAuth
+from app.dependencies import DbSession, CurrentAuth, enforce_rbac
 from app.repositories.tenant_scoped import AuditRepository
 from app.pagination import PaginationParams, paginate_items
 
@@ -28,6 +28,7 @@ async def list_audit_events(
     response: Response,
 ) -> List[AuditRecord]:
     """Retrieve immutable audit events log scoped to the active tenant."""
+    enforce_rbac(auth, "audit", "read")
     audit_repo = AuditRepository(db, auth.tenant_id)
     total = await audit_repo.count()
     events = await audit_repo.list_all(skip=pagination.offset, limit=pagination.limit)

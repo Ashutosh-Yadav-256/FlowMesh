@@ -1,0 +1,29 @@
+# ==============================================================================
+# FlowMesh External Apache Tomcat 10.1 Standalone WAR Container
+# ==============================================================================
+
+# --- Stage 1: Build Deployable WAR ---
+FROM maven:3.9.8-eclipse-temurin-17-alpine AS builder
+
+WORKDIR /build
+COPY services/enterprise-worker/pom.xml .
+RUN mvn dependency:go-offline -B
+
+COPY services/enterprise-worker/src ./src
+RUN mvn clean package -Pexternal-tomcat -DskipTests=true -B
+
+# --- Stage 2: Standalone Apache Tomcat 10.1 Runtime ---
+FROM tomcat:10.1-jdk17-temurin
+
+# Remove default sample webapps for hardened production security
+RUN rm -rf /usr/local/tomcat/webapps/*
+
+# Copy compiled FlowMesh WAR as root/flowmesh application
+COPY --from=builder /build/target/flowmesh-enterprise-worker.war /usr/local/tomcat/webapps/flowmesh.war
+COPY deployment/external-Tomcat/context.xml /usr/local/tomcat/conf/context.xml
+
+ENV CATALINA_OPTS="-Xms512m -Xmx2048m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+
+EXPOSE 8080
+
+CMD ["catalina.sh", "run"]

@@ -215,13 +215,21 @@ flowmesh/
 │   ├── security/               # STRIDE Threat Model & Cryptographic Key Specs
 │   ├── i18n/                   # Global Language Translations (JA, ZH, HI, FR, KO, ES)
 │   └── README.md               # Master Technical Documentation Index
-└── tests/
-    ├── unit/                   # Fast Isolated Unit Tests (176+ Tests across 8 Enterprise Suites)
-    ├── integration/            # Multi-Tenant & End-to-End API Audits (20 Tests)
-    ├── e2e/                    # Selenium UI & Orchestration Verification
-    ├── bdd/                    # Behavior-Driven Gherkin Acceptance Suites
-    ├── chaos/                  # Fault Injection & Circuit Breaker Contention
-    └── conftest.py             # Pytest Root Configuration & Fixtures
+├── database-adapters/          # Enterprise Polyglot Database Adapters
+│   ├── PostgreSQL/             # PostgreSQL Query & Introspection Adapter
+│   ├── Oracle/                 # Oracle 23ai Dialect & ERP Ledger Adapter
+│   └── SQL Server/             # Microsoft SQL Server T-SQL & Audit Adapter
+├── messaging/                  # Enterprise Event & Message Infrastructure
+│   ├── RabbitMQ/               # AMQP 0-9-1 Direct/DLQ Exchanges & Producers
+│   └── JMS/                    # Jakarta JMS 3.1 & ActiveMQ Artemis Queue/Topic
+├── monitoring/                 # Enterprise Telemetry & Remote Control
+│   └── JMX/                    # Java Management Extensions & MBean Registry
+├── deployment/                 # Production Application Server Packaging
+│   ├── embedded-Tomcat/        # Self-contained Fat JAR with Embedded Tomcat 10.1
+│   └── external-Tomcat/        # External Tomcat 10.1 WAR Deployment & context.xml
+└── web-console/                # Enterprise Management Interfaces
+    ├── React/                  # Next.js 15 / React 19 Enterprise Control Panel
+    └── legacy-AJAX-demo/       # Classic XMLHttpRequest Level 2 Console (Tomcat Served)
 ```
 
 ---
@@ -250,6 +258,25 @@ The **FlowMesh Enterprise Worker** (`services/enterprise-worker`) is a high-thro
    - **Production GC Tuning Profiles**: [`jvm.options`](services/enterprise-worker/jvm.options) specifies tuned parameters for **G1GC** (predictable <200ms latency, region-based reclamation) and **Generational ZGC** (sub-millisecond pause times for ultra-low latency SLAs).
    - **Crash Diagnostics & OOM Safety**: Configured with `-XX:+HeapDumpOnOutOfMemoryError` and `-XX:+ExitOnOutOfMemoryError` for deterministic post-mortem diagnosis.
    - **Deep Technical Guide**: See [`docs/guides/JAVA_ENTERPRISE_SYSTEMS.md`](docs/guides/JAVA_ENTERPRISE_SYSTEMS.md) for an exhaustive architectural reference on JVM memory regions, GC algorithms, memory leak prevention, and interview questions.
+
+4. **Polyglot Enterprise Integration Infrastructure**:
+   - **Spring Boot REST APIs**: Unified controllers exposed under `/api/v1/enterprise/` with OpenAPI documentation, correlation ID tracing, and role-based access.
+   - **PostgreSQL**: Primary transactional persistence configured via HikariCP pool (`FlowMeshEnterpriseHikariCP`), Hibernate 6 PostgreSQL dialect, and parameterized query execution.
+   - **Redis Caching & Distributed Locks**: Lettuce client with `GenericJackson2JsonRedisSerializer`, custom TTL cache management, and multi-tenant distributed locks (`SET NX PX`) with automated expiration.
+   - **Database Adapters (`database-adapters/`)**: Pluggable adapter abstraction with connection pooling, table schema introspection, and dialect-specific execution:
+     - **PostgreSQL**: Native information schema querying and connection pool health.
+     - **Oracle Database**: Oracle 23ai dialect, `DUAL` table support, `OFFSET / FETCH NEXT` pagination, and ERP ledger integration.
+     - **Microsoft SQL Server**: T-SQL dialect, `TOP (n)` pagination, and audit log mapping.
+   - **Messaging (`messaging/`)**:
+     - **RabbitMQ (AMQP 0-9-1)**: Exchange-to-queue topology (`flowmesh.direct` -> `flowmesh.transactions.queue`) with Dead-Letter Exchanges (`flowmesh.dlx` -> `flowmesh.dlq`) and exponential backoff retry.
+     - **Jakarta JMS 3.1 (Artemis)**: Enterprise message broker supporting point-to-point queues (`flowmesh.jms.queue`) and pub/sub topics (`flowmesh.jms.topic`).
+   - **Monitoring (`monitoring/JMX`)**: Custom `FlowMeshWorkerMonitorMBean` registered in the JVM `PlatformMBeanServer` exposing real-time metrics (throughput, error rate, cache hit ratio, queue depths) and executable runtime operations (`resetCounters()`, `evictAllCaches()`, `triggerGarbageCollection()`, `runHealthCheck()`).
+   - **Deployment (`deployment/`)**:
+     - **Embedded Tomcat**: Self-contained executable Fat JAR with Tomcat 10.1 tuned for 200 worker threads and 8,192 max socket connections.
+     - **External Tomcat**: Standard WAR packaging (`flowmesh-enterprise-worker.war`) with `SpringBootServletInitializer` and JNDI DataSource configuration (`context.xml`).
+   - **Dual Web Consoles (`web-console/`)**:
+     - **React Console**: Modern Next.js 15 / React 19 control panel with live query playground, queue dispatcher, cache inspector, and MBean controls.
+     - **Legacy AJAX Demo**: Authentic retro Web 2.0 console powered by vanilla `XMLHttpRequest` Level 2, live status indicators, and state transition logging.
 
 ---
 
@@ -517,6 +544,15 @@ Key architectural decisions are formally documented in [`docs/adr/`](docs/adr/):
 - **[ADR-0002: Rejection of Arbitrary Remote Code Execution](docs/adr/ADR-0002-no-remote-code-execution.md)** — Elimination of RCE in favor of cryptographically signed structural actions.
 - **[ADR-0003: Generic StateStore Abstraction for Redis & RediForge](docs/adr/ADR-0003-statestore-abstraction.md)** — Universal state storage interface with atomic distributed locking and circuit breakers.
 - **[ADR-0004: Immutable Workflow Versioning and Pinning](docs/adr/ADR-0004-immutable-workflow-versions.md)** — Immutable $N+1$ deployment model with pinned execution and safe rollbacks.
+- **[ADR-0005: Enterprise ORM, Jakarta Persistence 3.1 & Hibernate 6 Architecture](docs/adr/ADR-0005-orm-jpa-hibernate-strategy.md)** — Elimination of $N+1$ queries via EntityGraph, optimistic locking with `@Version`, and soft deletes.
+- **[ADR-0006: Transactional Outbox Pattern & Data Platform Schema Governance](docs/adr/ADR-0006-transactional-outbox-data-platform.md)** — Elimination of dual-write anomalies, guaranteed at-least-once event delivery, and data contracts.
+
+For deep-dive technical engineering practices, see our specialized guides:
+- **[Enterprise ORM, JPA & Data Platform Engineering Guide](docs/guides/ORM_JPA_HIBERNATE_DATA_PLATFORM.md)**
+- **[Requirements & System Design Specifications](docs/guides/REQUIREMENTS_SYSTEM_DESIGN.md)**
+- **[TDD & Software Engineering Standards](docs/guides/TDD_SOFTWARE_ENGINEERING_STANDARDS.md)**
+- **[Enterprise Java Systems & Virtual Threads Guide](docs/guides/JAVA_ENTERPRISE_SYSTEMS.md)**
+- **[Multi-Database Adapters (PostgreSQL, Oracle, SQL Server) Guide](docs/guides/ENTERPRISE_DATABASE_GUIDE.md)**
 
 ---
 

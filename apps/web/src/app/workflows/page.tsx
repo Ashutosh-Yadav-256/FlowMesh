@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getActiveTenantId, postToApi } from "@/lib/api";
+import { getActiveTenantId, postToApi, fetchFromApi } from "@/lib/api";
 import {
   Workflow,
   Bell,
@@ -82,9 +82,40 @@ export default function WorkflowsPage() {
   const [selectedRollbackVer, setSelectedRollbackVer] = useState<number>(2);
   const [deploySuccessBanner, setDeploySuccessBanner] = useState<string | null>(null);
 
-  useEffect(() => {
+  const [workflowId, setWorkflowId] = useState<string>("wf_order_processing");
+
+  const loadWorkflows = async () => {
     const isAcme = getActiveTenantId() === "tenant_acme";
-    if (!isAcme) {
+    const apiWfs = await fetchFromApi<any[]>("/api/v1/workflows", []);
+    if (apiWfs && apiWfs.length > 0) {
+      const activeWf = apiWfs[0];
+      setWorkflowId(activeWf.id);
+      setCurrentVersion(activeWf.version);
+      if (activeWf.definition_json?.nodes) {
+        const mappedNodes = activeWf.definition_json.nodes.map((n: any) => ({
+          id: n.id,
+          name: n.name,
+          type: n.type,
+          detail: n.config?.description || n.name,
+          badge: n.type.split(".")[0],
+          connection_id: n.connection_id,
+          config: n.config,
+        }));
+        setNodes(mappedNodes);
+        if (mappedNodes.length > 0) setSelectedNode(mappedNodes[0]);
+      }
+      const apiVers = await fetchFromApi<any[]>(`/api/v1/workflows/${activeWf.id}/versions`, []);
+      if (apiVers && apiVers.length > 0) {
+        setVersions(apiVers.map((v: any) => ({
+          version: v.version,
+          changelog: v.changelog || `Version ${v.version}`,
+          deployed_at: new Date(v.deployed_at).toISOString().replace("T", " ").substring(0, 16) + " UTC",
+          deployed_by: v.deployed_by || "dev@flowmesh.dev",
+          node_count: v.definition_json?.nodes?.length || 5,
+          is_active: v.version === activeWf.version,
+        })));
+      }
+    } else if (!isAcme) {
       setIsCleanMode(true);
       setNodes([]);
       setVersions([]);
@@ -96,24 +127,12 @@ export default function WorkflowsPage() {
       setVersions(mockVersions);
       setCurrentVersion(3);
     }
+  };
 
-    const handleTenantChanged = () => {
-      const currentIsAcme = getActiveTenantId() === "tenant_acme";
-      if (!currentIsAcme) {
-        setIsCleanMode(true);
-        setNodes([]);
-        setVersions([]);
-        setCurrentVersion(0);
-      } else {
-        setIsCleanMode(false);
-        setNodes(initialDAG);
-        setSelectedNode(initialDAG[0]);
-        setVersions(mockVersions);
-        setCurrentVersion(3);
-      }
-    };
-    window.addEventListener("flowmesh:tenant_changed", handleTenantChanged);
-    return () => window.removeEventListener("flowmesh:tenant_changed", handleTenantChanged);
+  useEffect(() => {
+    loadWorkflows();
+    window.addEventListener("flowmesh:tenant_changed", loadWorkflows);
+    return () => window.removeEventListener("flowmesh:tenant_changed", loadWorkflows);
   }, []);
 
   const validationErrors: string[] = [];
@@ -176,7 +195,7 @@ export default function WorkflowsPage() {
     }
   };
 
-  const handleDeployVersion = () => {
+  const handleDeployVersion = async () => {
     const nextVer = currentVersion + 1;
     const newVerRecord: WorkflowVersion = {
       version: nextVer,
@@ -186,6 +205,25 @@ export default function WorkflowsPage() {
       node_count: nodes.length,
       is_active: true,
     };
+
+    await postToApi(`/api/v1/workflows/${workflowId}/versions`, {
+      changelog: deployChangelog || `Production release v${nextVer}`,
+      definition: {
+        schema_version: 1,
+        name: "Order Processing",
+        description: deployChangelog || `Production release v${nextVer}`,
+        trigger: { type: "webhook", config: { path: "/orders" } },
+        nodes: nodes.map((n) => ({
+          id: n.id,
+          name: n.name,
+          type: n.type,
+          connection_id: n.connection_id,
+          config: n.config || {},
+        })),
+        edges: [],
+      },
+    });
+
     const updatedVersions = [
       newVerRecord,
       ...versions.map((v) => ({ ...v, is_active: false })),
@@ -196,9 +234,13 @@ export default function WorkflowsPage() {
     setDeployChangelog("");
     setDeploySuccessBanner(`Successfully deployed immutable version v${nextVer} (ADR-0004 pinned). All in-flight executions continue on their pinned version.`);
     setTimeout(() => setDeploySuccessBanner(null), 6000);
+    await loadWorkflows();
   };
 
-  const handleRollback = () => {
+  const handleRollback = async () => {
+    await postToApi(`/api/v1/workflows/${workflowId}/rollback`, {
+      target_version: selectedRollbackVer,
+    });
     const updatedVersions = versions.map((v) => ({
       ...v,
       is_active: v.version === selectedRollbackVer,
@@ -208,6 +250,7 @@ export default function WorkflowsPage() {
     setShowRollbackModal(false);
     setDeploySuccessBanner(`Rolled back active workflow pointer to v${selectedRollbackVer} (ADR-0004). Historical run data preserved.`);
     setTimeout(() => setDeploySuccessBanner(null), 6000);
+    await loadWorkflows();
   };
 
   return (

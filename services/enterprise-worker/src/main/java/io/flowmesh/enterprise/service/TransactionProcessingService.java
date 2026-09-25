@@ -1,12 +1,14 @@
 package io.flowmesh.enterprise.service;
 
 import io.flowmesh.enterprise.concurrency.TenantConcurrencyStripingManager;
+import io.flowmesh.enterprise.dataplatform.service.TransactionalOutboxService;
 import io.flowmesh.enterprise.logging.AuditLoggingService;
 import io.flowmesh.enterprise.logging.LogExecutionTime;
 import io.flowmesh.enterprise.model.EnterpriseTransaction;
 import io.flowmesh.enterprise.repository.EnterpriseTransactionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,14 +25,17 @@ public class TransactionProcessingService {
     private final EnterpriseTransactionRepository repository;
     private final TenantConcurrencyStripingManager stripingManager;
     private final AuditLoggingService auditLoggingService;
+    private final TransactionalOutboxService outboxService;
 
     public TransactionProcessingService(
             EnterpriseTransactionRepository repository,
             TenantConcurrencyStripingManager stripingManager,
-            AuditLoggingService auditLoggingService) {
+            AuditLoggingService auditLoggingService,
+            @Autowired(required = false) TransactionalOutboxService outboxService) {
         this.repository = repository;
         this.stripingManager = stripingManager;
         this.auditLoggingService = auditLoggingService;
+        this.outboxService = outboxService;
     }
 
     @LogExecutionTime(thresholdMs = 250, operation = "transaction.process")
@@ -57,7 +62,19 @@ public class TransactionProcessingService {
                     "COMMITTED"
                 );
 
+                txn.addAuditEntry("CREATED", "EnterpriseWorker", "Source: " + sourceSystem + " -> Target: " + targetSystem);
+
                 EnterpriseTransaction saved = persistTransaction(txn);
+
+                if (outboxService != null) {
+                    outboxService.appendOutboxEvent(
+                            tenantId,
+                            "TRANSACTION",
+                            reference,
+                            "TRANSACTION_COMMITTED",
+                            Map.of("amount", amount, "currency", currency, "status", "COMMITTED")
+                    );
+                }
 
                 auditLoggingService.recordAudit(
                     AuditLoggingService.AuditAction.TRANSACTION_CREATED,

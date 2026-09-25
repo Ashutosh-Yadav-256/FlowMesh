@@ -406,15 +406,26 @@ async def poll_commands(
     """Outbound long-poll endpoint for Edge Agent to receive pending signed commands."""
     from sqlalchemy import select
     from app.models.agent import AgentRecord
+    from app.config import settings
+
+    if not x_tenant_id and settings.environment not in ("development", "test"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication / tenant scope required to poll commands",
+        )
 
     stmt = select(AgentRecord).where(AgentRecord.id == agent_id)
-    if x_tenant_id:
-        stmt = stmt.where(AgentRecord.tenant_id == x_tenant_id)
     res = await db.execute(stmt)
     agent = res.scalar_one_or_none()
 
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
+
+    if x_tenant_id and agent.tenant_id != x_tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Cross-tenant access forbidden: Agent '{agent_id}' does not belong to tenant '{x_tenant_id}'",
+        )
 
     cmd_repo = AgentCommandRepository(db, agent.tenant_id)
     pending = await cmd_repo.get_pending_commands(agent_id=agent.id, limit=10)
@@ -450,15 +461,26 @@ async def record_command_result(
     """Records the execution result sent back by the Edge Agent."""
     from sqlalchemy import select
     from app.models.agent import AgentRecord
+    from app.config import settings
+
+    if not x_tenant_id and settings.environment not in ("development", "test"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication / tenant scope required to record command results",
+        )
 
     stmt = select(AgentRecord).where(AgentRecord.id == agent_id)
-    if x_tenant_id:
-        stmt = stmt.where(AgentRecord.tenant_id == x_tenant_id)
     res = await db.execute(stmt)
     agent = res.scalar_one_or_none()
 
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
+
+    if x_tenant_id and agent.tenant_id != x_tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Cross-tenant access forbidden: Agent '{agent_id}' does not belong to tenant '{x_tenant_id}'",
+        )
 
     cmd_repo = AgentCommandRepository(db, agent.tenant_id)
     updated = await cmd_repo.record_result(

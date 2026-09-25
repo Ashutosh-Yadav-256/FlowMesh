@@ -176,16 +176,55 @@ async def replay_run(
     db: DbSession,
     auth: CurrentAuth,
 ) -> Dict[str, Any]:
-    """Replays a run from original ingress event with idempotency verification.
-    
-    NOTE: NATS JetStream replay integration is not yet implemented.
-    This endpoint will return 501 until the event replay pipeline is connected.
-    """
+    """Replays a run from original ingress event with idempotency verification."""
     enforce_rbac(auth, "run", "replay")
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Run replay is not yet implemented. NATS JetStream replay pipeline is planned for a future release.",
+    repo = RunRepository(db, auth.tenant_id)
+    wf_repo = WorkflowRepository(db, auth.tenant_id)
+    audit_repo = AuditRepository(db, auth.tenant_id)
+
+    orig_run = await repo.get_by_id(run_id)
+    if not orig_run:
+        raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found")
+
+    wf = await wf_repo.get_by_id(orig_run.workflow_id)
+    if not wf or not wf.definition_json:
+        raise HTTPException(status_code=400, detail=f"Workflow definition for '{orig_run.workflow_id}' not found")
+
+    new_run_id = f"RUN-{uuid.uuid4().hex[:6].upper()}"
+    wf_def = WorkflowDefinition(**wf.definition_json)
+    engine = WorkflowEngine(db, auth.tenant_id)
+
+    try:
+        re_run = await engine.execute(
+            workflow_def=wf_def,
+            run_id=new_run_id,
+            input_payload=orig_run.input_payload or {},
+            trace_id=orig_run.trace_id or uuid.uuid4().hex,
+            trigger_source=f"replay:{orig_run.id}",
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Execution error during run replay: {str(exc)}")
+
+    await audit_repo.record(
+        actor=auth.email,
+        action="run.replay",
+        resource=f"runs/{new_run_id}",
+        result="SUCCESS",
+        metadata={
+            "original_run_id": orig_run.id,
+            "new_run_id": re_run.id,
+            "status": re_run.status,
+        },
     )
+
+    return {
+        "status": "REPLAYED",
+        "original_run_id": orig_run.id,
+        "new_run_id": re_run.id,
+        "run_status": re_run.status,
+        "duration_seconds": re_run.duration_seconds,
+        "message": f"Run {orig_run.id} replayed into new execution {re_run.id} with status {re_run.status}",
+    }
 
 
 @router.post("/{run_id}/approve", response_model=RunDetail)

@@ -1,6 +1,16 @@
 server:
   port: 8082
   shutdown: graceful
+  tomcat:
+    threads:
+      max: 200
+      min-spare: 20
+    max-connections: 8192
+    accept-count: 100
+    connection-timeout: 20000
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
 
 spring:
   application:
@@ -11,9 +21,9 @@ spring:
       enabled: true
 
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/flowmesh_enterprise}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/flowmesh}
     username: ${DB_USER:flowmesh}
-    password: ${DB_PASSWORD:flowmesh_secret}
+    password: ${DB_PASSWORD:flowmesh_secure_password}
     driver-class-name: org.postgresql.Driver
     hikari:
       pool-name: FlowMeshEnterpriseHikariCP
@@ -33,6 +43,32 @@ spring:
         generate_statistics: false
     show-sql: false
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:flowmesh}
+    password: ${RABBITMQ_PASSWORD:flowmesh_secure_password}
+    listener:
+      simple:
+        auto-startup: false
+        retry:
+          enabled: true
+          max-attempts: 3
+
+  artemis:
+    mode: embedded
+    embedded:
+      enabled: true
+      persistent: false
+      queues: flowmesh.jms.queue,flowmesh.jms.dlq
+      topics: flowmesh.jms.topic
+
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
@@ -41,11 +77,19 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
+  jmx:
+    enabled: true
+    default-domain: io.flowmesh
+
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics,prometheus
+      base-path: /actuator
+    jmx:
+      exposure:
+        include: "*"
   endpoint:
     health:
       show-details: always

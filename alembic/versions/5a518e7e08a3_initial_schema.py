@@ -18,11 +18,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-
-    pass
-
+    from app.database import Base
+    bind = op.get_bind()
+    Base.metadata.create_all(bind=bind)
 
 
 def downgrade() -> None:
-
-    pass
+    from app.database import Base
+    bind = op.get_bind()
+    Base.metadata.drop_all(bind=bind)

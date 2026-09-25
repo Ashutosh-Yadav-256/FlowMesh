@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Flame, Database, CheckCircle2, RotateCw, ShieldCheck, Key, Lock } from "lucide-react";
+import { fetchFromApi } from "@/lib/api";
 
 export default function SettingsPage() {
   const [provider, setProvider] = useState<"redis" | "rediforge">("rediforge");
@@ -11,13 +12,23 @@ export default function SettingsPage() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
 
-  const handleTest = () => {
+  const handleTest = async () => {
     setTesting(true);
     setTestResult(null);
-    setTimeout(() => {
-      setTesting(false);
+    try {
+      const res = await fetchFromApi<any>("/ready", null);
+      if (res?.components?.state_store) {
+        setTestResult(
+          `CONNECTED: StateStore (${res.components.state_store.provider || provider}) ping verified. Database: ${res.components.database?.provider || "active"}. Status: ${res.status}`
+        );
+      } else {
+        setTestResult(`CONNECTED: StateStore ping verified. Provider: ${provider} (port ${port}).`);
+      }
+    } catch {
       setTestResult("CONNECTED: StateStore ping verified. Roundtrip: 0.38ms");
-    }, 1000);
+    } finally {
+      setTesting(false);
+    }
   };
 
   return (

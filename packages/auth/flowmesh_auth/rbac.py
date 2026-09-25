@@ -43,6 +43,7 @@ class Resource(str, Enum):
     DLQ = "dlq"
     AGENT = "agent"
     AUDIT = "audit"
+    EVENT = "event"
 
 
 _POLICY_MATRIX: Set[Tuple[str, str, str]] = {
@@ -76,6 +77,7 @@ _POLICY_MATRIX: Set[Tuple[str, str, str]] = {
     (Role.OPERATOR.value, Resource.AGENT.value, Action.EXECUTE.value),
     (Role.OPERATOR.value, Resource.AGENT.value, Action.ROTATE.value),
     (Role.OPERATOR.value, Resource.AUDIT.value, Action.READ.value),
+    (Role.OPERATOR.value, Resource.EVENT.value, Action.READ.value),
 
     (Role.DEVELOPER.value, Resource.TENANT.value, Action.READ.value),
     (Role.DEVELOPER.value, Resource.USER.value, Action.READ.value),
@@ -97,6 +99,7 @@ _POLICY_MATRIX: Set[Tuple[str, str, str]] = {
     (Role.DEVELOPER.value, Resource.AGENT.value, Action.CREATE.value),
     (Role.DEVELOPER.value, Resource.AGENT.value, Action.EXECUTE.value),
     (Role.DEVELOPER.value, Resource.AUDIT.value, Action.READ.value),
+    (Role.DEVELOPER.value, Resource.EVENT.value, Action.READ.value),
 
     (Role.VIEWER.value, Resource.TENANT.value, Action.READ.value),
     (Role.VIEWER.value, Resource.USER.value, Action.READ.value),
@@ -107,6 +110,7 @@ _POLICY_MATRIX: Set[Tuple[str, str, str]] = {
     (Role.VIEWER.value, Resource.DLQ.value, Action.READ.value),
     (Role.VIEWER.value, Resource.AGENT.value, Action.READ.value),
     (Role.VIEWER.value, Resource.AUDIT.value, Action.READ.value),
+    (Role.VIEWER.value, Resource.EVENT.value, Action.READ.value),
 }
 
 

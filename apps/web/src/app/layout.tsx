@@ -3,6 +3,7 @@ import { Urbanist } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 
@@ -30,7 +31,11 @@ export default function RootLayout({
         <Sidebar />
         <div className="flex flex-col min-h-screen">
           <Header />
-          <main className="ml-64 p-8 flex-1">{children}</main>
+          <main className="lg:ml-64 ml-0 p-4 lg:p-8 flex-1">
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
+          </main>
         </div>
         <OnboardingModal />
         <OnboardingChecklist />
